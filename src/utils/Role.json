@@ -1,0 +1,21 @@
+{
+  "roles": [
+    {
+      "name": "Admin",
+      "description": "Full access to manage project managers, projects, and system settings.",
+      "permissions": [
+        "manage_project_managers",
+        "view_all_projects",
+        "edit_any_project",
+        "delete_projects",
+        "activate_deactivate_users",
+        "invite_project_managers"
+      ]
+    },
+    {
+      "name": "Project Manager",
+      "description": "Can manage their own projects and interact with assigned clients.",
+      "permissions": ["create_project", "edit_own_project", "view_own_projects"]
+    }
+  ]
+}

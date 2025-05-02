@@ -9,7 +9,7 @@
     "pretty": true,
     "sourceMap": true,
     "declaration": true,
-    "types": ["node", "dotenv"],
+    "types": ["node", "dotenv", "jest"],
     "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "./dist",
