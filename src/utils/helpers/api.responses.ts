@@ -27,19 +27,19 @@ export const messages = {
             websiteURL: "website URL",
 
             profileImage: 'ProfileImage Id',
-
-
+            Id: "id",
+            field: "field",
 
             rate_limit_exceeded: "Too many requests from this IP, please try again later.",
         },
-        
+
         User: {
             rate_limit_exceeded_Login: "Too many login attempts, please try again later",
             user: "User",
             emailOrpassword: "Invalid email or password. You have ## attempts remaining",
-            
-            YouCanNotUsePrevious: `You can't reuse your previous password`,
 
+            YouCanNotUsePrevious: `You can't reuse your previous password`,
+            email: "email",
             loginFailed: 'email or password',
 
             succ_login: "Login successful",
@@ -62,20 +62,20 @@ export const messages = {
             passwordNumber: "one digit",
             passwordSpecialChar: "one special character (@#$%^&*!.)",
             token: "Token",
-            
+
             match: 'Match',
             AddressLine1: 'addressLine1',
             AddressLine2: 'addressLine2',
             city: 'city',
             state: 'state',
             zipcode: 'zipcode',
-            
+
             userName: 'userName',
             fullName: 'fullName',
-            
+
             adminLevel: 'adminLevel',
             admin: 'Admin',
-            
+
             AccountLock: "Account locked. Please reset your password"
 
 
