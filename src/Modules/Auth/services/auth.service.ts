@@ -21,12 +21,12 @@ export class AuthService {
             const user = await User.findOne({
                 email: { $regex: new RegExp(`^${email}$`, 'i') }
             })
-            const role = await Role.findById(user.roleId)
 
             if (!user) {
-                throw new HttpException(status.Unauthorized, messages[language].General.invalid.replace('##', messages[language].User.loginFailed));
+                throw new HttpException(status.NotFound, messages[language].General.invalid.replace('##', messages[language].User.loginFailed));
             }
 
+            const role = await Role.findById(user.roleId)
             if (user.lockUntil && user.lockUntil >= new Date()) {
                 throw new HttpException(status.Unauthorized, messages[language].User.AccountLock);
             }
