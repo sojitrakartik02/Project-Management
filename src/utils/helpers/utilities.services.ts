@@ -2,9 +2,9 @@ import { HttpException } from '../exceptions/httpException';
 import { DataStoredInToken, IUser, TokenData } from '@Auth/interfaces/auth.interface';
 import { Types } from 'mongoose';
 import { RoleDocumnet } from '../../Modules/Role/interfaces/role.interface';
-import { sign, verify } from 'jsonwebtoken';
+import { JsonWebTokenError, sign, TokenExpiredError, verify } from 'jsonwebtoken';
 import { hash, compare } from 'bcryptjs';
-import { SECRET_KEY } from '@config/index';
+import { SECRET_KEY, REFRESH_TOKEN, REFRESH_TOKEN_EXPIRY } from '@config/index';
 import {
     registerDecorator,
     ValidationOptions,
@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import dayjs from 'dayjs';
 import { messages, status } from './api.responses';
-
+import { v4 as uuidv4 } from 'uuid';
 
 
 export const removenull = (obj: Record<string, any>) => {
@@ -45,11 +45,13 @@ export const generateOTP = (length: number): string => {
 };
 
 
+// expiresIn,
+// token: sign(dataStoredInToken, SECRET_KEY, { expiresIn }),
 
 
-export const createJWT = (user: IUser, expiresIn): TokenData => {
+export const createJWT = (user: IUser, expiresIn): { accessToken: string; refreshToken: string, sessionId: string } => {
     const roleId = user.roleId;
-
+    const sessionId = require('uuid').v4()
     const dataStoredInToken: DataStoredInToken = {
         _id: user._id.toString(),
         role: roleId instanceof Types.ObjectId
@@ -57,23 +59,54 @@ export const createJWT = (user: IUser, expiresIn): TokenData => {
             : (roleId as RoleDocumnet)._id.toString(),
         email: user.email,
         passwordHash: user.accountSetting.passwordHash,
-    };
+        sessionId
 
+    };
+    const accessToken = sign(dataStoredInToken, SECRET_KEY, { expiresIn })
+    const refreshToken = sign({ _id: user._id.toString(), sessionId }, REFRESH_TOKEN, { expiresIn: parseDurationToMs(REFRESH_TOKEN_EXPIRY) })
 
     return {
-        expiresIn,
-        token: sign(dataStoredInToken, SECRET_KEY, { expiresIn }),
+        accessToken, refreshToken, sessionId
     };
 };
-export const verifyJWT = (token: string): object => {
+
+export const verifyJWT = (token: string, secret: string = SECRET_KEY): DataStoredInToken => {
+    const language = 'en'
     try {
-        const decoded = verify(token, SECRET_KEY) as DataStoredInToken;
+        const decoded = verify(token, secret) as DataStoredInToken;
+
         return decoded;
     } catch (error) {
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(status.Unauthorized, messages['English'].General.expired.replace("##", messages['English'].User.token));
+        if (error instanceof TokenExpiredError) {
+            throw new HttpException(
+                status.Unauthorized,
+                messages[language].General.expired.replace('##', messages[language].User.token)
+            );
+        }
+
+        if (error instanceof JsonWebTokenError) {
+            throw new HttpException(
+                status.Unauthorized,
+                messages[language].General.invalid.replace('##', messages[language].User.token)
+            );
+        }
+        throw new HttpException(
+            status.Unauthorized,
+            messages[language].General.error
+        );
     }
 };
+
+
+export const hashToken = async (token: string): Promise<string> => {
+    return await hash(token, 10);
+};
+
+export const compareToken = async (token: string, hashedToken: string): Promise<boolean> => {
+    return await compare(token, hashedToken);
+};
+
+
 
 export const hashPassword = async (password: string): Promise<string> => {
     return hash(password, 10);

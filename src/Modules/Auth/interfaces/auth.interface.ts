@@ -10,7 +10,6 @@ export interface IUser {
     failedLoginAttempts: number;
     lockUntil?: Date;
     lastPasswordChange: Date;
-    rememberMeToken?: string;
     token?: string;
     tokenExpiry?: Date
     fullName?: string;
@@ -40,12 +39,17 @@ export interface IUser {
 
     createdAt?: Date;
     updatedAt?: Date;
-
+    passwordExpiryDate: Date
     accountSetting: {
         userName?: string;
         passwordHash?: string;
         lastLogin?: Date;
     };
+
+    sessionId: string
+    refreshToken: string
+    refreshTokenExpiry: Date
+    isRememberMe: boolean
 }
 
 
@@ -54,6 +58,7 @@ export interface DataStoredInToken {
     role: string;
     email: string;
     passwordHash: string;
+    sessionId: string;
 
 }
 

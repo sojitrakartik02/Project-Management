@@ -31,6 +31,7 @@ export const messages = {
             field: "field",
 
             rate_limit_exceeded: "Too many requests from this IP, please try again later.",
+            refreshToken: "refreshToken"
         },
 
         User: {

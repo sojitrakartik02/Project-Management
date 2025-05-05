@@ -12,6 +12,10 @@ import { ErrorMiddleware } from '@middlewares/error.middleware';
 import { logger as Logger, stream } from '@utils/logger';
 import envCheckMiddleware from '@middlewares/envValidator';
 import morgan from 'morgan'
+import swaggerUi from 'swagger-ui-express';
+
+import YAML from 'yamljs';
+
 
 export class App {
     public app: express.Application;
@@ -31,6 +35,7 @@ export class App {
         this.http = require('http').Server(this.app)
 
         this.initializeMiddlewares();
+        this.initializeSwagger()
         this.databaseConnection()
         this.initializeRoutes(routes)
         this.initializeErrorHandling()
@@ -92,7 +97,10 @@ export class App {
     }
 
 
-
+    private initializeSwagger() {
+        const swaggerDocs = YAML.load('swagger.yaml')
+        this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs))
+    }
 
     public initializeErrorHandling() {
         this.app.use(ErrorMiddleware)

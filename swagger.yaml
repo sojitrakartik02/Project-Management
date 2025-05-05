@@ -1,0 +1,848 @@
+openapi: 3.0.0
+info:
+  title: Construction Inspection
+  description: APIs for managing construction site inspections, status tracking, and report retrieval.
+  version: 1.0.0
+  contact:
+    name: Construction
+tags:
+  - name: Auth
+    description: Authentication operations
+  # - name: Upload
+
+paths:
+  /role:
+    get:
+      tags:
+        - Role
+      summary: Get All Roles
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Successfully retrieved the list of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                      example: '660d3bca2e6b2a001d8e43aa'
+                    name:
+                      type: string
+                      example: 'Admin'
+                    description:
+                      type: string
+                      example: 'Administrator role with full permissions'
+        401:
+          description: Unauthorized (missing or invalid token)
+        500:
+          description: Internal Server Error
+
+  /auth/signin:
+    post:
+      tags:
+        - Auth
+      summary: User Login
+      requestBody:
+        description: User login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: User email address
+                  example: 'admin@example.com'
+                password:
+                  type: string
+                  description: User password
+                  example: 'admin123'
+      responses:
+        200:
+          description: User successfully logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'Login successful'
+                    data:
+                      _id: '67d9368b9de456a3bf0a00a6'
+                      email: 'admin@example.com'
+                      roleId: 'Admin'
+                      isActive: true
+                    accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2Q5MzY4YjlkZTQ1NmEzYmYwYTAwYTYiLCJyb2xlIjoiNjdjZWU1YTcxMTFiZGYwZjUyN2I5YWEwIiwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTc0MjMwMTE4NSwiZXhwIjoxNzQyNTYwMzg1fQ.IyAB2h6SJz6taeJooL0ZA67KaKfwNYIT7BQh7eA_gsQ'
+                    refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE0ZDEyZmMwYjE1ZWNmMmVhNzc0NzAiLCJzZXNzaW9uSWQiOiI3MTFjNzJiZS01OTZkLTQ4NWMtODU5MC01YzdiYjllZjI4NzUiLCJpYXQiOjE3NDY0NDA0NDksImV4cCI6MjM1MTI0MDQ0OX0.S8tHQJyHdJdcKuOLVEe4-dWBy_1i4kNdM1AKOARsC-Q'
+        401:
+          description: Invalid Password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedResponse'
+              examples:
+                unauthorized:
+                  value:
+                    status: 401
+                    message: 'Invalid Password'
+        404:
+          description: Invalid User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 'Invalid User'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Forgot Password Request
+      requestBody:
+        description: User's email for password recovery
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: User email address
+                  example: 'admin@example.com'
+      responses:
+        200:
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'OTP sent successfully'
+                    Authorization: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwib3RwIjoiJDJiJDEwJGVZVmpFbi93My5QRzVkaURQWEY4a09CTFV4c004Wi9zZWZxMVNPa2hhcjl6WHc2Tnd1cWdLIiwiaWF0IjoxNzQyMzAyMTIxLCJleHAiOjE3NDIzMDI0MjF9.8cUmdIEKvPFB-NU7BPtGZ8krChBEVj56uS0oOOcJSbI'
+        404:
+          description: Invalid User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 'Invalid User'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+  /auth/request-new-otp:
+    post:
+      tags:
+        - Auth
+      summary: Resend OTP for User
+      description: Resends OTP to the authenticated user and returns a token for OTP verification.
+      requestBody:
+        description: Request body containing user email to resend OTP
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: The user's email address
+                  example: 'admin@example.com'
+      responses:
+        200:
+          description: OTP has been resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'Resend OTP successful'
+                    Authorization: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwib3RwIjoiJDJiJDEwJHh1aUttVnRwcHZLMkJxNmlkd2t5cmVkOEwwMmlYLkF3Zk41TmJEQkU5RWU4VlJOZE9ZYS9DIiwiX2lkIjoiNjdkYTgxYjg3YjkyOGE1ZGE2MTM2MzQzIiwiaWF0IjoxNzQyNDY4Nzg0LCJleHAiOjE3NDI0NjkwODR9.hIzzrmMqHAtmC7YzCaUcefJ-oiQItCI2r_eAoq9Pbuc'
+        400:
+          description: Invalid or missing user data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  value:
+                    status: 400
+                    message: 'Invalid or missing user data'
+        404:
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+              examples:
+                notFound:
+                  value:
+                    status: 404
+                    message: 'User not found'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+  /auth/verify-otp:
+    post:
+      tags:
+        - Auth
+      summary: Verify OTP for User
+      requestBody:
+        description: OTP verification
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                otp:
+                  type: string
+                  example: '123456'
+                email:
+                  type: string
+                  example: 'admin@gmail.com'
+      responses:
+        200:
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'Verification successful'
+        400:
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  value:
+                    status: 400
+                    message: 'Invalid OTP'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset User Password
+      requestBody:
+        description: New password and its confirmation
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: User email address
+                  example: 'admin@example.com'
+                newPassword:
+                  type: string
+                  description: New password for the user
+                  example: 'newPassword123'
+                confirmPassword:
+                  type: string
+                  description: Confirmation of the new password
+                  example: 'newPassword123'
+      responses:
+        200:
+          description: Password successfully reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'Successfully changed password'
+        400:
+          description: Password mismatch or invalid data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  value:
+                    status: 400
+                    message: "Invalid password, password doesn't match, or new password same as old password"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+  /auth/refresh-token:
+    post:
+      summary: Refresh Token
+      tags:
+        - Auth
+      requestBody:
+        description: Refresh the access token using a valid refresh token
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  example: 'your-refresh-token'
+      responses:
+        '200':
+          description: Access token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Access token refreshed successfully
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+                        refreshToken:
+                        type: string
+                        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        '401':
+          description: Invalid or expired refresh token
+        '500':
+          description: Internal server error
+
+  /upload:
+    post:
+      summary: Upload Files
+      description: Uploads files to the server and returns the file URLs.
+      tags:
+        - Upload
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: moduleName
+          schema:
+            type: string
+            description: Name of the module (e.g., profileImage, supportingDocument)
+            example: profileImage
+
+          required: true
+        - in: query
+          name: moduleType
+          schema:
+            type: string
+            description: Add moduleType user,phase etc..
+
+        - in: query
+          name: subModule
+          schema:
+            type: string
+            description: add roleName agency,govOfficer etc..
+
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+
+      responses:
+        200:
+          description: Successful file upload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        filename:
+                          type: string
+                          example: 'sample.png'
+                        url:
+                          type: string
+                          example: 'https://your-app.com/uploads/sample.png'
+                        mimetype:
+                          type: string
+                          example: 'image/png'
+                        size:
+                          type: integer
+                          example: 102400
+                  message:
+                    type: string
+                    example: 'Files uploaded successfully'
+        400:
+          description: No files uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'No files uploaded'
+
+  /upload/get:
+    get:
+      summary: Get all images from S3
+      description: Retrieves a list of images stored in AWS S3.
+      tags:
+        - Upload
+      security:
+        - bearerAuth: []
+      operationId: getImages
+      parameters:
+        - in: query
+          name: moduleName
+          schema:
+            type: string
+          required: false
+          description: Name of the module (e.g., profileImage, supportingDocument)
+          example: profileImage
+      responses:
+        '200':
+          description: Successfully retrieved images
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          example: 'default/1743691573943-825345287.png'
+                        url:
+                          type: string
+                          example: 'https://your-bucket-name.s3.ap-south-1.amazonaws.com/default/1743691573943-825345287.png'
+                        size:
+                          type: integer
+                          example: 58105
+                  message:
+                    type: string
+                    example: 'Images retrieved successfully'
+        '500':
+          description: Failed to fetch images
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Failed to fetch images'
+
+  /upload/delete:
+    delete:
+      summary: Delete images from S3
+      description: Deletes multiple images from AWS S3 using their URLs.
+      tags:
+        - Upload
+      security:
+        - bearerAuth: []
+      operationId: deleteImages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  description: List of Supporting Documents IDs to delete
+                  items:
+                    type: string
+
+      responses:
+        '200':
+          description: Images deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Images deleted successfully'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Invalid URLs array'
+        '500':
+          description: Failed to delete images
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Failed to delete images'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    IUserResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        phone:
+          type: string
+        joiningDate:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+
+        roleId:
+          type: string
+        address:
+          type: object
+          properties:
+            addressLine1:
+              type: string
+            addressLine2:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            zipCode:
+              type: string
+        website:
+          type: string
+        certifications:
+          items:
+            type: object
+            properties:
+              accreditationNumber:
+                type: string
+              certifyingBody:
+                type: string
+              accreditationType:
+                type: string
+              expiryDate:
+                type: string
+                format: date-time
+              educationalQualification:
+                type: string
+
+        supportingDocuments:
+          type: array
+          items:
+            type: string
+        keyPersonnel:
+          items:
+            type: object
+            properties:
+              primaryContactPerson:
+                type: string
+              designation:
+                type: string
+              contactNumber:
+                type: string
+              email:
+                type: string
+                format: email
+        admin:
+          type: object
+          properties:
+            adminLevel:
+              type: string
+              enum: [SuperAdmin, RegularAdmin]
+            permissions:
+              type: array
+              items:
+                type: string
+        agency:
+          type: object
+          properties:
+            agencyName:
+              type: string
+            registrationNumber:
+              type: string
+            taxIdentificationNumber:
+              type: string
+            businessType:
+              type: string
+            dateEstablished:
+              type: string
+              format: date-time
+        governmentOfficer:
+          type: object
+          properties:
+            governmentAgencyName:
+              type: string
+            officeAddress:
+              type: string
+            dateOfAppointment:
+              type: string
+              format: date-time
+            workLocation:
+              type: string
+            employeeID:
+              type: string
+        thirdPartyInspectionCompany:
+          type: object
+          properties:
+            companyName:
+              type: string
+            registrationNumber:
+              type: string
+            taxIdentificationNumber:
+              type: string
+            businessType:
+              type: string
+            dateEstablished:
+              type: string
+              format: date-time
+        projectManagementConsultancy:
+          type: object
+          properties:
+            companyName:
+              type: string
+            registrationNumber:
+              type: string
+            taxIdentificationNumber:
+              type: string
+            businessType:
+              type: string
+            dateEstablished:
+              type: string
+              format: date-time
+        labOfficer:
+          type: object
+          properties:
+            governmentORCompanyAffiliation:
+              type: string
+            laboratoryName:
+              type: string
+            employeeID:
+              type: string
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - email
+        - joiningDate
+        - isActive
+        - roleId
+        - createdAt
+        - updatedAt
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+          example: 200
+        message:
+          type: string
+          description: Success message
+          example: 'Operation successful'
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+          additionalProperties: true
+      required:
+        - status
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: string
+          description: Error message
+          example: 'Bad request'
+      required:
+        - status
+        - message
+
+    UnauthorizedResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 401
+        message:
+          type: string
+          example: 'Unauthorized'
+      required:
+        - status
+        - message
+
+    ForbiddenResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 403
+        message:
+          type: string
+          example: 'Access denied'
+      required:
+        - status
+        - message
+
+    NotFoundResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: 'Resource not found'
+      required:
+        - status
+        - message
+
+    ConflictResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 409
+        message:
+          type: string
+          example: 'Resource already exists'
+      required:
+        - status
+        - message
+
+    ServerErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 500
+        message:
+          type: string
+          example: 'Internal server error'
+      required:
+        - status
+        - message
+
+servers:
+  # - url: https://construction-qa-backend.projectanddemoserver.com/api/v1
+  #   description: Development server
+  - url: http://localhost:3000/api/v1
+    description: Local server for development

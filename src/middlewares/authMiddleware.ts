@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyJWT } from '@utils/helpers/utilities.services';
+import { compareToken, verifyJWT } from '@utils/helpers/utilities.services';
 import User from '@Auth/models/auth.model';
 import Role from '../Modules/Role/models/role.model';
 import { HttpException } from '../utils/exceptions/httpException';
-import { DataStoredInToken } from '@Auth/interfaces/auth.interface';
 import { Types } from 'mongoose';
 import { IPermission } from '../Modules/Permission/interfaces/Permission.interface';
 import Permission from '../Modules/Permission/models/Permission.model';
 import { jsonStatus, messages, status } from '../utils/helpers/api.responses';
+import { REFRESH_TOKEN } from '@config/index';
+import { DataStoredInToken } from '@Auth/interfaces/auth.interface';
 
 
 export const getAuthenticatedUser = async (req: Request) => {
@@ -17,20 +18,21 @@ export const getAuthenticatedUser = async (req: Request) => {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.empty.replace('##', messages[req.userLanguage].User.token));
     }
 
-    const decoded = verifyJWT(token) as DataStoredInToken;
+    const decoded = verifyJWT(token);
 
     if (!decoded) {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.invalid.replace("##", messages[req.userLanguage].User.token));
     }
+
+
     const user = await User.findOne({ _id: decoded._id })
 
 
+    console.log("user", user.sessionId !== decoded.sessionId)
 
-    if (user.accountSetting.passwordHash !== decoded.passwordHash) {
-        throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.sessionExpired);
-
+    if (!user || !user.sessionId || user.sessionId !== decoded.sessionId) {
+        throw new HttpException(status.Unauthorized, messages['en'].General.sessionExpired);
     }
-
 
 
     if (!user || !user.isActive) {
@@ -60,7 +62,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         }
         return res.status(status.InternalServerError).json({
             status: status.InternalServerError,
-            message: messages[req.userLanguage || 'English'].General.error,
+            message: messages[req.userLanguage || 'en'].General.error,
         });
     }
 };
@@ -80,6 +82,7 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
         req.user = user;
         next();
     } catch (error) {
+
         if (error instanceof HttpException) {
             return res.status(error.status).json({
                 status: error.status,
@@ -95,6 +98,9 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
 
 
 
+
+
+
 export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user = await User.findById(req.user._id).populate<{
@@ -104,7 +110,7 @@ export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, 
         if (!user) {
             throw new HttpException(
                 status.Unauthorized,
-                messages[req.userLanguage || 'English'].General.unauthorized
+                messages[req.userLanguage || 'en'].General.unauthorized
             );
         }
 
@@ -121,13 +127,13 @@ export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, 
             if (!targetUser) {
                 throw new HttpException(
                     status.Forbidden,
-                    messages[req.userLanguage || 'English'].General.permission
+                    messages[req.userLanguage || 'en'].General.permission
                 );
             }
         } else if (!isAdmin && !isSelf) {
             throw new HttpException(
                 status.Forbidden,
-                messages[req.userLanguage || 'English'].General.permission
+                messages[req.userLanguage || 'en'].General.permission
             );
         }
 
@@ -142,7 +148,7 @@ export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, 
         }
         return res.status(status.InternalServerError).json({
             status: status.InternalServerError,
-            message: messages[req.userLanguage || 'English'].General.error,
+            message: messages[req.userLanguage || 'en'].General.error,
         });
     }
 };

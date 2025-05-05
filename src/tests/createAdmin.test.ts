@@ -29,10 +29,10 @@ describe('User Authentication Tests', () => {
 
 
         const pmcRole = await Role.findOne({ name: 'Admin' })
-        const passwordHash = await hashPassword('Admin@12');
+        const passwordHash = await hashPassword('Admin@123');
 
         const AdminIser = new User({
-            email: `admin@ninjatechnolabs.com`,
+            email: `admin@admin.com`,
             fullName: `Ninja Twch`,
             phone: `9876543741`,
             joiningDate: new Date(),
@@ -43,7 +43,7 @@ describe('User Authentication Tests', () => {
             accountSetting: {
 
                 passwordHash: passwordHash,
-                userName: "ninjatechnolabs"
+                userName: "admin"
 
             },
 
