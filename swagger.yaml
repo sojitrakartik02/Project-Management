@@ -80,7 +80,8 @@ paths:
                       email: 'admin@example.com'
                       roleId: 'Admin'
                       isActive: true
-                    Authorization: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2Q5MzY4YjlkZTQ1NmEzYmYwYTAwYTYiLCJyb2xlIjoiNjdjZWU1YTcxMTFiZGYwZjUyN2I5YWEwIiwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTc0MjMwMTE4NSwiZXhwIjoxNzQyNTYwMzg1fQ.IyAB2h6SJz6taeJooL0ZA67KaKfwNYIT7BQh7eA_gsQ'
+                    accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2N2Q5MzY4YjlkZTQ1NmEzYmYwYTAwYTYiLCJyb2xlIjoiNjdjZWU1YTcxMTFiZGYwZjUyN2I5YWEwIiwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTc0MjMwMTE4NSwiZXhwIjoxNzQyNTYwMzg1fQ.IyAB2h6SJz6taeJooL0ZA67KaKfwNYIT7BQh7eA_gsQ'
+                    refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODE0ZDEyZmMwYjE1ZWNmMmVhNzc0NzAiLCJzZXNzaW9uSWQiOiI3MTFjNzJiZS01OTZkLTQ4NWMtODU5MC01YzdiYjllZjI4NzUiLCJpYXQiOjE3NDY0NDA0NDksImV4cCI6MjM1MTI0MDQ0OX0.S8tHQJyHdJdcKuOLVEe4-dWBy_1i4kNdM1AKOARsC-Q'
         401:
           description: Invalid Password
           content:
@@ -321,6 +322,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerErrorResponse'
+
+  /auth/refresh-token:
+    post:
+      summary: Refresh Token
+      tags:
+        - Auth
+      requestBody:
+        description: Refresh the access token using a valid refresh token
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  example: 'your-refresh-token'
+      responses:
+        '200':
+          description: Access token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Access token refreshed successfully
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+                        refreshToken:
+                        type: string
+                        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        '401':
+          description: Invalid or expired refresh token
+        '500':
+          description: Internal server error
 
   /upload:
     post:

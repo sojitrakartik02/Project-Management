@@ -1,5 +1,7 @@
 import mongoose, { Model, Schema } from "mongoose";
 import { IUser } from "@Auth/interfaces/auth.interface";
+import { parseDurationToMs } from "@helpers/utilities.services";
+import { PASSWORD_EXPIRY } from "@config/index";
 
 const ObjectId = Schema.Types.ObjectId
 const userSchema = new Schema<IUser>(
@@ -29,10 +31,12 @@ const userSchema = new Schema<IUser>(
             default: null
         },
 
-        rememberMeToken: { type: String },
         fullName: { type: String },
 
-
+        passwordExpiryDate: {
+            type: Date,
+            default: () => new Date(Date.now() + parseDurationToMs(PASSWORD_EXPIRY))
+        },
         accountSetting: {
             userName: {
                 type: String,
@@ -59,7 +63,7 @@ const userSchema = new Schema<IUser>(
         createdBy: {
             type: ObjectId,
             ref: 'User',
-            
+
         },
         notificationPreferences: {
             type: [String],
@@ -72,6 +76,12 @@ const userSchema = new Schema<IUser>(
         forgotpasswordTokenExpiry: { type: Date, required: false, default: null },
         tokenExpiry: { type: Date, required: false },
         isFirstTimeResetPassword: { type: Boolean, default: null, required: false },
+        sessionId: { type: String, required: false },
+
+        refreshToken: { type: String, required: false },
+        refreshTokenExpiry: { type: Date, required: false },
+        isRememberMe: { type: Boolean, default: false }
+
     },
     { timestamps: true, versionKey: false }
 );

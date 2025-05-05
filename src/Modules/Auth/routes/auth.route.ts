@@ -35,6 +35,7 @@ export class AuthRoute implements Routes {
         this.router.get(`${this.path}/getAllUsers`, globalRateLimiter, isAdmin, this.authController.getAllUser)
         this.router.get(`${this.path}/signout`, authMiddleware, globalRateLimiter, this.authController.logout)
         this.router.get(`${this.path}/:id`, globalRateLimiter, this.authController.getByUserId)
+        this.router.post(`${this.path}/refresh-token`, globalRateLimiter, this.authController.refreshToken);
     }
 }
 

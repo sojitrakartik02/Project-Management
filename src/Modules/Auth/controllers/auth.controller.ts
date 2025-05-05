@@ -11,18 +11,22 @@ export class AuthController {
 
     public login = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            req.body = pick(req.body, ['email', 'password', 'rememberMe']);
+            req.body = pick(req.body, ['email', 'password', 'isRememberMe']);
             removenull(req.body);
             const language = req.userLanguage ?? 'en'
-            const { email, password, rememberMe = false } = req.body;
+            const { email, password, isRememberMe=false } = req.body;
 
 
-            const { user, token } = await this.authService.login(email.toLowerCase(), password, rememberMe, language);
-            return res.status(status.OK).set('Authorization', token).json({
+            const { user, token: accessToken, refreshToken } = await this.authService.login(email.toLowerCase(), password, isRememberMe, language);
+            return res.status(status.OK).json({
                 status: jsonStatus.OK,
                 message: messages[language].User.succ_login,
-                data: user,
-                Authorization: token,
+                data: {
+                    user,
+                    accessToken,
+                    refreshToken,
+                },
+                // Authorization: token,
             });
         } catch (error) {
             next(error)
@@ -139,7 +143,8 @@ export class AuthController {
                 throw new HttpException(status.Unauthorized, messages[language].invalid.replace('##', messages[language].user));
             }
 
-            await this.authService.logout(req.user, language);
+
+            await this.authService.logout(req.user._id, language);
             return res.status(status.OK).json({
                 status: jsonStatus.OK,
                 message: messages[language].User.succ_logout,
@@ -153,7 +158,7 @@ export class AuthController {
         try {
             const userId = req.params.id
             const language = req.userLanguage ?? 'en'
-            
+
             const user = await this.authService.getByUserId(userId, language);
             return res.status(status.OK).json({
                 status: jsonStatus.OK,
@@ -164,4 +169,23 @@ export class AuthController {
             next(error)
         }
     };
+
+
+
+
+    public refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const language = req.userLanguage ?? 'en'
+            const { refreshToken } = req.body;
+            const data = await this.authService.refreshAccessToken(refreshToken, language);
+            res.status(200).json({
+                status: 200,
+                message: 'Access token refreshed successfully',
+                data,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
 }
