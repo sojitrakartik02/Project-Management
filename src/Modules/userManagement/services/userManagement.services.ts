@@ -28,54 +28,70 @@ export class userManagementService {
     public async createUser(data: any, createdBy: string, language: string) {
         try {
             const [existingUser, role] = await Promise.all([
-                User.findOne({ email: data.email }).lean(),
+                User.findOne({ email: data.email }).lean(), // Removed isDeleted filter
                 Role.findById(data.roleId.toString()).lean()
-            ])
-            if (existingUser?.isDeleted === true) { // functionality if user come after deleting
-                const [, res] = await Promise.all([
-                    await User.updateOne(
-                        { email: data.email },
-                        {
-                            $set: {
-                                isDeleted: false,
-                                isActive: true,
-                                deletedAt: null,
-                                createdAt: Date.now(),
-                                passwordUpdatedAt: null,
-                            },
-                            $unset: {
-                                forgotPassword: "",
-                                forgotpasswordTokenExpiry: "",
-                                token: "",
-                                tokenExpiry: "",
-                                refreshToken: "",
-                                refreshTokenExpiry: "",
-                                sessionId: "",
-                                isVerifiedOtp: "",
-                                isVerifyOtpAt: "",
-                            }
+            ]);
+
+            if (existingUser?.isDeleted === true) {
+                const resetTokenResult = createJWT(existingUser, parseDurationToMs(TOKEN_EXPIRY));
+                const resetToken =
+                    typeof resetTokenResult === "string"
+                        ? resetTokenResult
+                        : resetTokenResult.accessToken;
+                const resetTokenExpiry = new Date(Date.now() + parseDurationToMs(TOKEN_EXPIRY));
+
+                await User.updateOne(
+                    { email: data.email },
+                    {
+                        $set: {
+                            isDeleted: false,
+                            isActive: true,
+                            deletedAt: null,
+                            createdAt: Date.now(),
+                            passwordUpdatedAt: null,
+                            forgotPassword: resetToken,
+                            forgotpasswordTokenExpiry: resetTokenExpiry,
+                            isFirstTimeResetPassword: true,
+                            isVerifiedOtp: true,
+                            isVerifyOtpAt: new Date(),
+                            createdBy: createdBy
+                        },
+                        $unset: {
+                            token: "",
+                            tokenExpiry: "",
+                            refreshToken: "",
+                            refreshTokenExpiry: "",
+                            sessionId: "",
                         }
-                    ),
-                    User.findOne({ email: data.email }).select("-accountSetting.passwordHash -forgotPassword -tokenExpiry").lean()
-                ])
-                return res
+                    }
+                );
+
+                const reactivatedUser = await User.findOne({ email: data.email }).select("_id email firstName lastName roleId isActive isDeleted joiningDate accountSetting.userName"
+                ).lean();
+                const fName = reactivatedUser.firstName + (reactivatedUser.lastName ?? "");
+                const resetLink = `${FRONTEND_URL}/auth/reset-password/change?token=${resetToken}`;
+                await resetPasswordEmail(reactivatedUser.email, resetLink, fName);
+
+                return reactivatedUser;
             }
+
             if (existingUser) {
-                throw new HttpException(status.ResourceExist, messages[language].General.already_exist.replace("##", messages[language].User.email))
+                throw new HttpException(status.ResourceExist, messages[language].General.already_exist.replace("##", messages[language].User.email));
             }
+
             if (!role) {
                 throw new HttpException(
                     status.BadRequest,
                     messages[language].General.not_found.replace("##", messages[language].Role.role)
                 );
             }
+
             if (role.name === "Admin") {
                 throw new HttpException(
                     status.Forbidden,
                     messages[language].General.Permission
                 );
             }
-
 
             const randomPassword = this.generateRandomPassword();
             const hashedPassword = await bcrypt.hash(randomPassword, 10);
@@ -85,29 +101,21 @@ export class userManagementService {
                 firstName: data.firstName,
                 lastName: data.lastName,
                 roleId: role._id,
-
-                accountSetting: {
-                    passwordHash: hashedPassword,
-                },
+                accountSetting: { passwordHash: hashedPassword },
                 isActive: true,
                 isDeleted: false,
                 joiningDate: new Date(),
                 invitedAt: new Date(),
                 createdBy: createdBy.toString(),
                 inviteStatus: 'WaitingToAccept',
-
-
-
             });
 
-            const resetTokenResult = createJWT(newUser, parseDurationToMs(TOKEN_EXPIRY))
+            const resetTokenResult = createJWT(newUser, parseDurationToMs(TOKEN_EXPIRY));
             const resetToken =
                 typeof resetTokenResult === "string"
                     ? resetTokenResult
                     : resetTokenResult.accessToken;
-            const resetTokenExpiry = new Date(
-                Date.now() + parseDurationToMs(TOKEN_EXPIRY)
-            );
+            const resetTokenExpiry = new Date(Date.now() + parseDurationToMs(TOKEN_EXPIRY));
 
             newUser.forgotPassword = resetToken;
             newUser.forgotpasswordTokenExpiry = resetTokenExpiry;
@@ -115,17 +123,17 @@ export class userManagementService {
             newUser.isVerifiedOtp = true;
             newUser.isVerifyOtpAt = new Date();
 
-            await newUser.save()
+            await newUser.save();
 
-            const userData = await User.findById(newUser._id).select("-accountSetting.passwordHash -forgotPassword -tokenExpiry").lean();
+            const userData = await User.findById(newUser._id).select("_id email firstName lastName roleId isActive isDeleted joiningDate accountSetting.userName"
+            ).lean();
+
             if (role.name === "Project Manager") {
                 await ProjectManager.create({ userId: newUser._id });
-                const fName = data.firstName + data.lastName
-
+                const fName = data.firstName + (data.lastName ?? "");
                 const resetLink = `${FRONTEND_URL}/auth/reset-password/change?token=${resetToken}`;
                 await resetPasswordEmail(newUser.email, resetLink, fName);
             }
-
 
             if (teamMemberRoles.includes(role.name)) {
                 await TeamMember.create({
@@ -137,9 +145,11 @@ export class userManagementService {
 
             return userData;
         } catch (error) {
-            console.log(error)
-            if (error instanceof HttpException) throw error
-            throw new HttpException(status.InternalServerError, messages[language].General.errorCreating.replace("##", messages[language].User.user))
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                status.InternalServerError,
+                messages[language].General.errorCreating.replace("##", messages[language].User.user)
+            );
         }
     }
 
@@ -228,5 +238,82 @@ export class userManagementService {
 
 
 
+    // profile update
+
+    public async updateUser(id: string, createdBy: string, requesterRoleId: string, data: any, language: string) {
+        try {
+            const [requesterUser, targetUser, roles] = await Promise.all([
+                User.findById(createdBy),
+                User.findOne({ _id: id, createdBy: createdBy }),
+                Role.find({})
+            ]);
+
+            if (!targetUser) {
+                throw new HttpException(
+                    status.NotFound,
+                    messages[language].General.not_found.replace("##", messages[language].User.user)
+                );
+            }
+
+            const getRoleName = (roleId: string) => roles.find(r => r._id.toString() === roleId)?.name;
+
+            const requesterRole = getRoleName(requesterRoleId);
+            const targetRole = getRoleName(targetUser.roleId.toString());
+
+            if (!requesterRole || !targetRole) {
+                throw new HttpException(
+                    status.Forbidden,
+                    messages[language].General.permission
+                );
+            }
+
+            const isSelf = createdBy === id;
+
+            //  Access Control
+            if (requesterRole === "Admin") {
+                if (targetRole === "Project Manager" && targetUser.createdBy?.toString() !== createdBy) {
+                    throw new HttpException(status.Forbidden, messages[language].General.permission);
+                }
+            } else if (requesterRole === "Project Manager") {
+                if (targetRole === "Admin" || targetRole === "Project Manager") {
+                    throw new HttpException(status.Forbidden, messages[language].General.permission);
+                }
+            } else if (teamMemberRoles.includes(requesterRole)) {
+                if (!isSelf) {
+                    throw new HttpException(status.Forbidden, messages[language].General.permission);
+                }
+            } else {
+                throw new HttpException(status.Forbidden, messages[language].General.permission);
+            }
+
+            //  Update Only Changed Fields
+            const updatedFields: any = {};
+            for (const key in data) {
+                if (Object.prototype.hasOwnProperty.call(data, key) && targetUser.get(key) !== data[key]) {
+                    updatedFields[key] = data[key];
+                }
+            }
+
+            if (Object.keys(updatedFields).length > 0) {
+                await User.findByIdAndUpdate(id, updatedFields, { runValidators: true });
+            }
+
+            return await User.findById(id).select(
+                "_id firstName lastName fullName email roleId isActive notificationPreferences accountSetting.userName createdAt updatedAt"
+            );
+        } catch (error) {
+            console.log(error)
+            if (error instanceof HttpException) throw error;
+
+            throw new HttpException(
+                status.InternalServerError,
+                messages[language].General.errorUpdating.replace("##", messages[language].User.user)
+            );
+        }
+    }
 
 }
+
+
+
+
