@@ -16,6 +16,72 @@
       "name": "Project Manager",
       "description": "Can manage their own projects and interact with assigned clients.",
       "permissions": ["create_project", "edit_own_project", "view_own_projects"]
+    },
+    {
+      "name": "UI/UX Designer",
+      "description": "Designs the UI/UX for the projects.",
+      "permissions": ["create_design", "edit_own_design", "view_own_design"]
+    },
+    {
+      "name": "HTML Developer",
+      "description": "Develops the HTML/CSS components of the project.",
+      "permissions": [
+        "create_html_components",
+        "edit_own_html_components",
+        "view_own_html_components"
+      ]
+    },
+    {
+      "name": "Frontend Developer",
+      "description": "Develops the frontend of the project.",
+      "permissions": [
+        "develop_frontend",
+        "edit_own_frontend",
+        "view_own_frontend"
+      ]
+    },
+    {
+      "name": "Backend Developer",
+      "description": "Develops the backend of the project.",
+      "permissions": ["develop_backend", "edit_own_backend", "view_own_backend"]
+    },
+    {
+      "name": "Full Stack Developer",
+      "description": "Develops both the frontend and backend of the project.",
+      "permissions": [
+        "develop_full_stack",
+        "edit_own_full_stack",
+        "view_own_full_stack"
+      ]
+    },
+    {
+      "name": "QA",
+      "description": "Tests the functionality and quality of the project.",
+      "permissions": [
+        "create_tests",
+        "edit_own_tests",
+        "view_own_tests",
+        "report_bugs"
+      ]
+    },
+    {
+      "name": "Sales",
+      "description": "Manages sales and client communication.",
+      "permissions": ["view_sales_data", "contact_clients", "close_sales"]
+    },
+    {
+      "name": "BA",
+      "description": "Analyzes business requirements and manages the process.",
+      "permissions": [
+        "gather_requirements",
+        "create_requirements_docs",
+        "manage_requirements"
+      ]
+    },
+    {
+      "name": "Other",
+      "description": "Other roles that do not fall under the predefined categories.",
+      "permissions": ["view_project_data"]
     }
   ]
 }
