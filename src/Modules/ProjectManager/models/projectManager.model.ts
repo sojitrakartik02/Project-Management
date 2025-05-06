@@ -34,6 +34,9 @@ const projectManagerSchema = new Schema<IProjectManager>(
     { timestamps: true, versionKey: false }
 );
 
+projectManagerSchema.index({ status: 1 })
+
+
 const ProjectManager: Model<IProjectManager> = mongoose.model<IProjectManager>('ProjectManager', projectManagerSchema);
 
 export default ProjectManager;

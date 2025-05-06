@@ -28,12 +28,10 @@ export const getAuthenticatedUser = async (req: Request) => {
     const user = await User.findOne({ _id: decoded._id })
 
 
-    console.log("user", user.sessionId !== decoded.sessionId)
 
     if (!user || !user.sessionId || user.sessionId !== decoded.sessionId) {
         throw new HttpException(status.Unauthorized, messages['en'].General.sessionExpired);
     }
-
 
     if (!user || !user.isActive) {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.invalid.replace("##", messages[req.userLanguage].User.user));
@@ -207,6 +205,7 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
         if (!userRole || userRole.name !== 'Admin') {
             throw new HttpException(status.Forbidden, messages[language].General.permission);
         }
+        console.log("userRole", userRole)
 
         req.user = user;
         next();

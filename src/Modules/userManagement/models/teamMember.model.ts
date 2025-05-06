@@ -26,6 +26,7 @@ const teamMemberSchema = new Schema<ITeamMember>(
         timestamps: true, versionKey: false
     }
 );
+teamMemberSchema.index({ status: 1 })
 
 const TeamMember: Model<ITeamMember> = mongoose.model<ITeamMember>('TeamMember', teamMemberSchema);
 export default TeamMember;

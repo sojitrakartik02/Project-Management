@@ -327,7 +327,7 @@ export class AuthService {
             const resetWindowExpiry = new Date(
                 user.isVerifyOtpAt.getTime() + parseDurationToMs(RESET_WINDOW_MINUTES) * 60 * 1000
             );
-           
+
 
             if (new Date() > resetWindowExpiry && user.isFirstTimeResetPassword !== true) {
                 throw new HttpException(
@@ -405,7 +405,7 @@ export class AuthService {
 
     public async getAllUser(createdBy: string, language: string = 'English'): Promise<IUser[]> {
         try {
-            return await User.find({ createdBy }).select(
+            return await User.find({ createdBy, isDeleted: false }).select(
                 '-accountSetting -permissions -restrictedPermissions -forgotPassword -forgotpasswordTokenExpiry -tokenExpiry -isFirstTimeResetPassword -failedLoginAttempts -lockUntil -otp -otpCreatedAt -otpExpiresAt -isDeleted -deletedAt -token -isVerifiedOtp -isVerifyOtpAt -isPasswordUpdate -passwordUpdatedAt -isActive -refreshToken -refreshTokenExpiry -sessionId'
             );
         } catch (error) {
