@@ -1,7 +1,7 @@
 import { Routes } from "@interface/routes.interface";
 import { Router } from "express";
 import { userManagementController } from '@userManagement/controllers/userManagement.controller';
-import { isAdmin, isuserCreatePermission } from "@middlewares/authMiddleware";
+import { isAdmin, isuserCreatePermission, isUserPermissionArray } from "@middlewares/authMiddleware";
 
 
 export class userManagementRoutes implements Routes {
@@ -13,6 +13,6 @@ export class userManagementRoutes implements Routes {
     }
     public initializeRoutes() {
         this.router.post(`${this.path}/create`, isuserCreatePermission, this.userController.createUser)
-        this.router.delete(`${this.path}`)
+        this.router.delete(`${this.path}`, isUserPermissionArray, this.userController.deleteUser)
     }
 }

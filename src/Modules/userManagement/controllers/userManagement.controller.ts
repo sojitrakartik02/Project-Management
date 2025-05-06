@@ -3,6 +3,7 @@ import { userManagementService } from '@userManagement/services/userManagement.s
 import { NextFunction, Request, Response } from "express";
 import { pick, removenull } from "@helpers/utilities.services";
 import { jsonStatus, messages, status } from "@helpers/api.responses";
+import { HttpException } from "@exceptions/httpException";
 
 export class userManagementController {
     public userMService = Container.get(userManagementService)
@@ -38,9 +39,16 @@ export class userManagementController {
         try {
             const language = req.userLanguage ?? 'en'
             const createdBy = req.user._id
-            const ids = req.body
-
-            const result = await this.userMService.createUser(ids, createdBy, language)
+            console.log("createdBy", createdBy)
+            const {roleId} = req.body
+            
+            if (!roleId.length) {
+                throw new HttpException(
+                    status.BadRequest,
+                    messages[language].General.invalid.replace("##", messages[language].User.Ids)
+                );
+            }
+            const result = await this.userMService.deleteUser(roleId, createdBy, language)
             return res.status(status.OK).json({
                 status: jsonStatus.OK,
                 message: messages[language].General.delete_success.replace("##", messages[language].User.user),
@@ -48,6 +56,7 @@ export class userManagementController {
             });
 
         } catch (error) {
+            console.log(error)
             next(error)
         }
     }

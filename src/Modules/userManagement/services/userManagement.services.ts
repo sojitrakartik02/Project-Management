@@ -9,7 +9,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import ProjectManager from "@ProjectManager/models/projectManager.model";
 import { Service } from "typedi";
-import TeamMember from "@userManagement/models/TeamMember.model";
+import TeamMember from "@userManagement/models/teamMember.model";
 
 const teamMemberRoles = [
     'UI/UX Designer', 'HTML Developer', 'Frontend Developer',
@@ -19,16 +19,19 @@ const teamMemberRoles = [
 
 @Service()
 export class userManagementService {
+
+    // for generate random passowrd while creating user's
     private generateRandomPassword(length: number = 12): string {
         return crypto.randomBytes(length).toString("hex").slice(0, length);
     }
+    // create user's function 
     public async createUser(data: any, createdBy: string, language: string) {
         try {
             const [existingUser, role] = await Promise.all([
                 User.findOne({ email: data.email }).lean(),
                 Role.findById(data.roleId.toString()).lean()
             ])
-            if (existingUser?.isDeleted === true) {
+            if (existingUser?.isDeleted === true) { // functionality if user come after deleting
                 const [, res] = await Promise.all([
                     await User.updateOne(
                         { email: data.email },
@@ -141,14 +144,88 @@ export class userManagementService {
     }
 
 
+    // for delete user, check AssignedProject if exist then give error
     public async deleteUser(ids: string[], createdBy: string, language: string) {
         try {
+            const users = await User.find({
+                _id: { $in: ids },
+                createdBy,
+                isDeleted: false,
+            }).populate('roleId');
 
+            if (!users.length) {
+                throw new HttpException(
+                    status.NotFound,
+                    messages[language].General.not_found.replace("##", messages[language].User.user)
+                );
+            }
+
+            await Promise.all(users.map(async (user) => {
+                const roleName = (user.roleId as any).name;
+
+                if (roleName === 'Project Manager') {
+                    const manager = await ProjectManager.findOne({ userId: user._id, isDeleted: false });
+                    if (manager) {
+                        if (manager.assignedProjects.length > 0) {
+                            throw new HttpException(
+                                status.BadRequest,
+                                messages[language].User.userDelete.replace("##", `${user.firstName}`));
+                        }
+                        await ProjectManager.updateOne(
+                            { userId: user._id },
+                            { $set: { isDeleted: true, deletedAt: new Date(), status: 'Deactivated' } }
+                        );
+                    }
+                } else {
+                    const teamMember = await TeamMember.findOne({ userId: user._id, isDeleted: false });
+                    if (teamMember) {
+                        if (teamMember.assignedProjects.length > 0) {
+                            throw new HttpException(
+                                status.BadRequest,
+                                messages[language].User.userDelete.replace("##", `${user.firstName}`));
+
+                        }
+                        await TeamMember.updateOne(
+                            { userId: user._id },
+                            { $set: { isDeleted: true, deletedAt: new Date(), status: 'Inactive' } }
+                        );
+                    }
+                }
+            }));
+
+
+
+            // Soft-delete eligible users
+            const result = await User.updateMany(
+                { _id: { $in: ids }, createdBy, isDeleted: false },
+                {
+                    $set: {
+                        isDeleted: true,
+                        deletedAt: new Date(),
+                        isActive: false,
+                        token: null,
+                        tokenExpiry: null,
+                        forgotPassword: null,
+                        forgotpasswordTokenExpiry: null,
+                    },
+                }
+            );
+
+            if (result.modifiedCount === 0) {
+                throw new HttpException(
+                    status.NotFound,
+                    messages[language].General.not_found.replace("##", messages[language].User.user)
+                );
+            }
+
+            return { deletedCount: result.modifiedCount };
         } catch (error) {
-            if (error instanceof HttpException) throw error
-            throw new HttpException(status.InternalServerError, messages[language].errorDeleting.replace("##", messages[language].User.user))
+            console.log(error)
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(status.InternalServerError, messages[language].errorDeleting.replace("##", messages[language].User.user));
         }
     }
+
 
 
 
