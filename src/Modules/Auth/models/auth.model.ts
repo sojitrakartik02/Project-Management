@@ -17,6 +17,7 @@ const userSchema = new Schema<IUser>(
         roleId: {
             type: ObjectId,
             required: true,
+            ref: 'Role'
         },
         isActive: {
             type: Boolean,
@@ -65,11 +66,26 @@ const userSchema = new Schema<IUser>(
             ref: 'User',
 
         },
+        inviteStatus: {
+            type: String,
+            enum: ['WaitingToAccept', 'Accept', 'Deactivated'],
+            default: 'WaitingToAccept'
+        },
+        invitedAt: { type: Date },
+        acceptedInviteAt: { type: Date },
+
+        firstName: { type: String },
+        lastName: { type: String },
+
+
+
+
         notificationPreferences: {
             type: [String],
             enum: ['email', 'sms', 'inApp'],
             default: ['email', 'inApp'],
         },
+
         permissions: [{ type: String, default: [] }],
         restrictedPermissions: [{ type: String, default: [] }],
         forgotPassword: { type: String, required: false, default: null },

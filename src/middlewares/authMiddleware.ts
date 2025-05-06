@@ -67,6 +67,62 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 };
 
+export const isuserCreatePermission = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en';
+
+    try {
+        const user = await getAuthenticatedUser(req);
+        const userRole = user.roleId instanceof Types.ObjectId
+            ? await Role.findById(user.roleId.toString())
+            : user.roleId;
+
+        const targetRole = req.body.roleId;
+
+        if (userRole.name === 'Admin') {
+            req.user = user
+            return next();
+        }
+
+        const targetedRoleName = await Role.findById(targetRole.toString())
+
+        if (userRole.name === 'Project Manager') {
+            const allowedRolesForPM = [
+                'UI/UX Designer',
+                'HTML Developer',
+                'Frontend Developer',
+                'Backend Developer',
+                'Full stack Developer',
+                'QA',
+                'Sales',
+                'BA',
+                'Other'
+            ];
+            console.log("targetRole", targetedRoleName.name)
+            if (allowedRolesForPM.includes(targetedRoleName.name)) {
+                req.user = user
+                return next();
+            } else {
+                throw new HttpException(status.Forbidden, messages[language].General.permission);
+            }
+        }
+
+        throw new HttpException(status.Forbidden, messages[language].General.permission);
+    } catch (error) {
+        if (error instanceof HttpException) {
+            return res.status(error.status).json({
+                status: error.status,
+                message: error.message,
+            });
+        }
+        return res.status(status.InternalServerError).json({
+            status: status.InternalServerError,
+            message: messages[language].General.error,
+        });
+    }
+};
+
+
+
 export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
     const language = req.userLanguage ?? 'en'
     try {

@@ -4,7 +4,7 @@ import { Types } from 'mongoose';
 import { RoleDocumnet } from '../../Modules/Role/interfaces/role.interface';
 import { JsonWebTokenError, sign, TokenExpiredError, verify } from 'jsonwebtoken';
 import { hash, compare } from 'bcryptjs';
-import { SECRET_KEY, REFRESH_TOKEN, REFRESH_TOKEN_EXPIRY } from '@config/index';
+import { SECRET_KEY, REFRESH_TOKEN, REFRESH_TOKEN_EXPIRY, TOKEN_EXPIRY } from '@config/index';
 import {
     registerDecorator,
     ValidationOptions,
