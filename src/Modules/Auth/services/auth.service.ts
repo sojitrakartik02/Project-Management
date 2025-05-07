@@ -10,7 +10,7 @@ import {
     hashToken,
     compareToken,
 } from '@utils/helpers/utilities.services';
-import { IUser, IUserResponse } from '@Auth/interfaces/auth.interface';
+import { InviteStatusEnum, IUser, IUserResponse, StatusEnum } from '@Auth/interfaces/auth.interface';
 import { Service } from 'typedi';
 import { HttpException } from '@utils/exceptions/httpException';
 import { resetPasswordEmail, sendOtpEmail } from '@utils/mail/mailer';
@@ -30,7 +30,6 @@ import {
 import { messages, status } from '@utils/helpers/api.responses';
 
 import { sign } from 'jsonwebtoken';
-import ProjectManager from '@ProjectManager/models/projectManager.model';
 
 @Service()
 export class AuthService {
@@ -44,7 +43,7 @@ export class AuthService {
     ): Promise<{ user: Partial<IUserResponse>; token: string; refreshToken: string }> {
         try {
             const user = await User.findOne({
-                email: { $regex: new RegExp(`^${email}$`, 'i') },
+                email: { $regex: new RegExp(`^${email}$`, 'i') }, isDeleted: false, status: (StatusEnum.ACTIVE || StatusEnum.INACTIVE)
             }).populate('roleId');
 
             if (!user) {
@@ -99,7 +98,7 @@ export class AuthService {
 
             const { accessToken, refreshToken, sessionId } = createJWT(user, jwtExpiry);
             const hashedRefreshToken = await hashToken(refreshToken);
-            const refreshTokenExpiry = new Date(Date.now() + parseDurationToMs('7d'));
+            const refreshTokenExpiry = new Date(Date.now() + parseDurationToMs(REFRESH_TOKEN_EXPIRY));
 
             await User.updateOne(
                 { _id: user._id },
@@ -113,7 +112,9 @@ export class AuthService {
                         sessionId,
                         failedLoginAttempts: 0,
                         lockUntil: null,
-                        isRememberMe
+                        isRememberMe,
+                        status: StatusEnum.ACTIVE,
+                        isActive: true
                     },
                 }
             );
@@ -125,6 +126,7 @@ export class AuthService {
                     fullName: user.fullName,
                     roleName: (user.roleId as any).name,
                     isActive: user.isActive,
+                    status: StatusEnum.ACTIVE
                 },
                 token: accessToken,
                 refreshToken,
@@ -138,7 +140,7 @@ export class AuthService {
 
 
 
-    public async logout(userId: string, language: string = 'English'): Promise<boolean> {
+    public async logout(userId: string, language: string = 'en'): Promise<boolean> {
         try {
             if (!userId) {
                 throw new HttpException(
@@ -157,6 +159,8 @@ export class AuthService {
                     sessionId: null,
                     forgotPassword: null,
                     forgotpasswordTokenExpiry: null,
+                    isActive: false,
+                    status: StatusEnum.INACTIVE
                 }
             );
             return true;
@@ -196,6 +200,7 @@ export class AuthService {
                         isVerifiedOtp: false,
                         forgotPassword: forgotpasswordToken,
                         forgotpasswordTokenExpiry: forgotTokenExpiry,
+                        isFirstTimeResetPassword: null
                     }
                 ),
                 sendOtpEmail(user.email, otp, user.accountSetting.userName ?? email),
@@ -297,6 +302,7 @@ export class AuthService {
                     otpCreatedAt: null,
                     isVerifiedOtp: true,
                     isVerifyOtpAt: new Date(),
+                    isFirstTimeResetPassword: null
                 }
             );
         } catch (error) {
@@ -361,13 +367,20 @@ export class AuthService {
                 throw new HttpException(status.BadRequest, messages[language].User.YouCanNotUsePrevious);
             }
 
+            const updateFields: any = {
+                'accountSetting.passwordHash': passwordHash,
+                passwordUpdatedAt: new Date(),
+            };
+
+            if (user.isFirstTimeResetPassword === true) {
+                updateFields.inviteStatus = InviteStatusEnum.ACCEPTED;
+                updateFields.acceptedInviteAt = new Date();
+            }
+
             await User.updateOne(
                 { _id: user._id },
                 {
-                    $set: {
-                        'accountSetting.passwordHash': passwordHash,
-                        passwordUpdatedAt: new Date(),
-                    },
+                    $set: updateFields,
                     $unset: {
                         isVerifiedOtp: "",
                         isVerifyOtpAt: "",
@@ -383,38 +396,40 @@ export class AuthService {
                         lockUntil: "",
                     }
                 }
-            )
-            const isProjectManager = await ProjectManager.exists({ userId: user._id });
-            if (isProjectManager) {
-                await User.updateOne(
-                    { _id: user._id, 'inviteStatus': { $ne: 'Accept' } },
-                    {
-                        $set: {
-                            inviteStatus: 'Accept',
-                            acceptedInviteAt: new Date()
-                        }
-                    }
-                )
-            }
-
-        } catch (error) {
-            if (error instanceof HttpException) throw error;
-            throw new HttpException(status.InternalServerError, messages[language].General.error);
-        }
-    }
-
-    public async getAllUser(createdBy: string, language: string = 'English'): Promise<IUser[]> {
-        try {
-            return await User.find({ createdBy, isDeleted: false }).select(
-                '-accountSetting -permissions -restrictedPermissions -forgotPassword -forgotpasswordTokenExpiry -tokenExpiry -isFirstTimeResetPassword -failedLoginAttempts -lockUntil -otp -otpCreatedAt -otpExpiresAt -isDeleted -deletedAt -token -isVerifiedOtp -isVerifyOtpAt -isPasswordUpdate -passwordUpdatedAt -isActive -refreshToken -refreshTokenExpiry -sessionId'
             );
+
+
+
+
+
         } catch (error) {
             if (error instanceof HttpException) throw error;
             throw new HttpException(status.InternalServerError, messages[language].General.error);
         }
     }
 
-    public async getByUserId(userId: string, language: string = 'English'): Promise<Partial<IUserResponse>> {
+    public async getAllUser(createdBy: string, language: string = 'en'): Promise<IUser[]> {
+        try {
+            return await User.find({ createdBy, isDeleted: false }).select([
+                '_id',
+                'email',
+                'fullName',
+                'joiningDate',
+                'notificationPreferences',
+                'accountSetting.userName',
+                'status',
+                'inviteStatus',
+                'createdBy',
+                'firstName',
+                'lastName'
+            ])
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(status.InternalServerError, messages[language].General.error);
+        }
+    }
+
+    public async getByUserId(userId: string, language: string = 'en'): Promise<Partial<IUserResponse>> {
         try {
             if (!userId) {
                 throw new HttpException(
@@ -430,6 +445,11 @@ export class AuthService {
                 'joiningDate',
                 'notificationPreferences',
                 'accountSetting.userName',
+                'status',
+                'inviteStatus',
+                'createdBy',
+                'firstName',
+                'lastName'
             ]);
 
             if (!user || user.isDeleted) {
@@ -457,7 +477,7 @@ export class AuthService {
 
     public async refreshAccessToken(
         refreshToken: string,
-        language: string = 'English'
+        language: string = 'en'
     ): Promise<{ accessToken: string; refreshToken: string }> {
         try {
             const decoded = verifyJWT(refreshToken, REFRESH_TOKEN);

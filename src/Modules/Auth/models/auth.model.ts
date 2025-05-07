@@ -1,5 +1,5 @@
 import mongoose, { Model, Schema } from "mongoose";
-import { IUser } from "@Auth/interfaces/auth.interface";
+import { InviteStatusEnum, IUser, NotificationPreferenceEnum, StatusEnum } from "@Auth/interfaces/auth.interface";
 import { parseDurationToMs } from "@helpers/utilities.services";
 import { PASSWORD_EXPIRY } from "@config/index";
 
@@ -42,9 +42,6 @@ const userSchema = new Schema<IUser>(
             userName: {
                 type: String,
                 required: false
-                // default: function () {
-                //     return generateUniqueUserName(this.email)
-                // },
             },
             passwordHash: { type: String, required: true, minLength: 12 },
             lastLogin: { type: Date, required: false },
@@ -68,8 +65,8 @@ const userSchema = new Schema<IUser>(
         },
         inviteStatus: {
             type: String,
-            enum: ['WaitingToAccept', 'Accept', 'Deactivated'],
-            default: 'WaitingToAccept'
+            enum: Object.values(InviteStatusEnum),
+            default: InviteStatusEnum.WAITING_TO_ACCEPT
         },
         invitedAt: { type: Date },
         acceptedInviteAt: { type: Date },
@@ -82,8 +79,8 @@ const userSchema = new Schema<IUser>(
 
         notificationPreferences: {
             type: [String],
-            enum: ['email', 'sms', 'inApp'],
-            default: ['email', 'inApp'],
+            enum: Object.values(NotificationPreferenceEnum),
+            default: [NotificationPreferenceEnum.EMAIL, NotificationPreferenceEnum.IN_APP],
         },
 
         permissions: [{ type: String, default: [] }],
@@ -96,7 +93,13 @@ const userSchema = new Schema<IUser>(
 
         refreshToken: { type: String, required: false },
         refreshTokenExpiry: { type: Date, required: false },
-        isRememberMe: { type: Boolean, default: false }
+        isRememberMe: { type: Boolean, default: false },
+        status: {
+            type: String,
+            enum: Object.values(StatusEnum),
+            default: StatusEnum.ACTIVE
+        },
+
 
     },
     { timestamps: true, versionKey: false }
@@ -108,6 +111,8 @@ userSchema.pre('save', async function (next) {
             user.accountSetting ??= {}
             user.accountSetting.userName ??= await generateUniqueUserName(user.email)
         }
+
+
         next()
     } catch (error) {
         next(error)
