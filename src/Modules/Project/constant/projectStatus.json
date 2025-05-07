@@ -1,0 +1,9 @@
+{
+  "projectStatus": [
+    "Not Started",
+    "In Progress",
+    "Completed",
+    "On Hold",
+    "Cancelled"
+  ]
+}
