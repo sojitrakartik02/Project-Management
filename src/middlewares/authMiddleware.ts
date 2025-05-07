@@ -3,11 +3,11 @@ import { verifyJWT } from '@utils/helpers/utilities.services';
 import User from '@Auth/models/auth.model';
 import Role from '../Modules/Role/models/role.model';
 import { HttpException } from '../utils/exceptions/httpException';
-import { DataStoredInToken } from '@Auth/interfaces/auth.interface';
 import { Types } from 'mongoose';
 import { IPermission } from '../Modules/Permission/interfaces/Permission.interface';
 import Permission from '../Modules/Permission/models/Permission.model';
 import { jsonStatus, messages, status } from '../utils/helpers/api.responses';
+import userRoles from '@userManagement/constant/userStatus.json'
 
 
 export const getAuthenticatedUser = async (req: Request) => {
@@ -17,21 +17,20 @@ export const getAuthenticatedUser = async (req: Request) => {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.empty.replace('##', messages[req.userLanguage].User.token));
     }
 
-    const decoded = verifyJWT(token) as DataStoredInToken;
+    const decoded = verifyJWT(token);
 
     if (!decoded) {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.invalid.replace("##", messages[req.userLanguage].User.token));
     }
+
+
     const user = await User.findOne({ _id: decoded._id })
 
 
 
-    if (user.accountSetting.passwordHash !== decoded.passwordHash) {
-        throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.sessionExpired);
-
+    if (!user || !user.sessionId || user.sessionId !== decoded.sessionId) {
+        throw new HttpException(status.Unauthorized, messages['en'].General.sessionExpired);
     }
-
-
 
     if (!user || !user.isActive) {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.invalid.replace("##", messages[req.userLanguage].User.user));
@@ -60,25 +59,105 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         }
         return res.status(status.InternalServerError).json({
             status: status.InternalServerError,
-            message: messages[req.userLanguage || 'English'].General.error,
+            message: messages[req.userLanguage || 'en'].General.error,
         });
     }
 };
 
-export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
-    const language = req.userLanguage ?? 'en'
+
+
+export const isUserPermissionArray = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en';
+
     try {
         const user = await getAuthenticatedUser(req);
         const userRole = user.roleId instanceof Types.ObjectId
             ? await Role.findById(user.roleId.toString())
             : user.roleId;
 
-        if (!userRole || userRole.name !== 'Admin') {
-            throw new HttpException(status.Forbidden, messages[language].General.permission);
+        let roleIds: string[] = [];
+
+        if (Array.isArray(req.body) && req.body.every(item => item.roleId)) {
+            roleIds = req.body.map(item => item.roleId);
+        }
+        else if (Array.isArray(req.body.roleId)) {
+            const usersToDelete = await User.find({ _id: { $in: req.body.roleId } }, { roleId: 1 });
+
+            roleIds = usersToDelete.map(user => user.roleId.toString());
+        } else {
+            throw new HttpException(status.BadRequest, 'Invalid request structure.');
         }
 
-        req.user = user;
-        next();
+        if (userRole.name === 'Admin') {
+            req.user = user;
+            return next(); // Admin can do anything
+        }
+
+
+
+        if (userRole.name === 'Project Manager') {
+            const roles = await Role.find({ _id: { $in: roleIds } });
+
+            for (const role of roles) {
+                if (!userRoles.allowedRolesForPM.map(r => r.toLowerCase()).includes(role.name.toLowerCase())) {
+                    throw new HttpException(status.Forbidden, messages[language].General.permission);
+
+                }
+            }
+
+            req.user = user;
+            return next();
+        }
+
+        throw new HttpException(status.Forbidden, messages[language].General.permission);
+
+    } catch (error) {
+
+        if (error instanceof HttpException) {
+            return res.status(error.status).json({
+                status: error.status,
+                message: error.message,
+            });
+        }
+        return res.status(status.InternalServerError).json({
+            status: status.InternalServerError,
+            message: messages[language].General.error,
+        });
+    }
+};
+
+
+export const isuserCreatePermission = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en';
+
+    try {
+        const user = await getAuthenticatedUser(req);
+        const userRole = user.roleId instanceof Types.ObjectId
+            ? await Role.findById(user.roleId.toString())
+            : user.roleId;
+
+        const targetRole = req.body.roleId;
+
+        if (userRole.name === 'Admin') {
+            req.user = user
+            return next();
+        }
+
+        const targetedRoleName = await Role.findById(targetRole.toString())
+
+        if (userRole.name === 'Project Manager') {
+
+            if (userRoles.allowedRolesForPM.map(role => role.toLowerCase()).includes(targetedRoleName.name.toLowerCase())
+            ) {
+                req.user = user;
+                return next();
+            } else {
+
+                throw new HttpException(status.Forbidden, messages[language].General.permission);
+            }
+        }
+
+        throw new HttpException(status.Forbidden, messages[language].General.permission);
     } catch (error) {
         if (error instanceof HttpException) {
             return res.status(error.status).json({
@@ -95,6 +174,41 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
 
 
 
+export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en'
+    try {
+        const user = await getAuthenticatedUser(req);
+        const userRole = user.roleId instanceof Types.ObjectId
+            ? await Role.findById(user.roleId.toString())
+            : user.roleId;
+
+        if (!userRole || userRole.name !== 'Admin') {
+            throw new HttpException(status.Forbidden, messages[language].General.permission);
+        }
+
+
+        req.user = user;
+        next();
+    } catch (error) {
+
+        if (error instanceof HttpException) {
+            return res.status(error.status).json({
+                status: error.status,
+                message: error.message,
+            });
+        }
+        return res.status(status.InternalServerError).json({
+            status: status.InternalServerError,
+            message: messages[language].General.error,
+        });
+    }
+};
+
+
+
+
+
+
 export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user = await User.findById(req.user._id).populate<{
@@ -104,7 +218,7 @@ export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, 
         if (!user) {
             throw new HttpException(
                 status.Unauthorized,
-                messages[req.userLanguage || 'English'].General.unauthorized
+                messages[req.userLanguage || 'en'].General.unauthorized
             );
         }
 
@@ -121,13 +235,13 @@ export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, 
             if (!targetUser) {
                 throw new HttpException(
                     status.Forbidden,
-                    messages[req.userLanguage || 'English'].General.permission
+                    messages[req.userLanguage || 'en'].General.permission
                 );
             }
         } else if (!isAdmin && !isSelf) {
             throw new HttpException(
                 status.Forbidden,
-                messages[req.userLanguage || 'English'].General.permission
+                messages[req.userLanguage || 'en'].General.permission
             );
         }
 
@@ -142,7 +256,7 @@ export const restrictToSelfOrAdminCreator = async (req: Request, res: Response, 
         }
         return res.status(status.InternalServerError).json({
             status: status.InternalServerError,
-            message: messages[req.userLanguage || 'English'].General.error,
+            message: messages[req.userLanguage || 'en'].General.error,
         });
     }
 };
@@ -185,6 +299,12 @@ export const checkPermission = (requiredPermission: string) => {
             req.user = user;
             next();
         } catch (error) {
+            if (error instanceof HttpException) {
+                return res.status(error.status).json({
+                    status: error.status,
+                    message: error.message,
+                });
+            }
             return res.status(status.Forbidden).json({
                 status: jsonStatus.Forbidden,
                 message: messages[req.userLanguage].General.permisssion,

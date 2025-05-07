@@ -31,6 +31,7 @@ export const messages = {
             field: "field",
 
             rate_limit_exceeded: "Too many requests from this IP, please try again later.",
+            refreshToken: "refreshToken"
         },
 
         User: {
@@ -41,7 +42,7 @@ export const messages = {
             YouCanNotUsePrevious: `You can't reuse your previous password`,
             email: "email",
             loginFailed: 'email or password',
-
+            Ids: 'ids',
             succ_login: "Login successful",
             succ_logout: "Logout successful",
             auth_failed: "Authentication failed",
@@ -76,9 +77,9 @@ export const messages = {
             adminLevel: 'adminLevel',
             admin: 'Admin',
 
-            AccountLock: "Account locked. Please reset your password"
+            AccountLock: "Account locked. Please reset your password",
 
-
+            userDelete: 'Cannot delete ## — User is currently added to projects.'
         },
 
         Role: {

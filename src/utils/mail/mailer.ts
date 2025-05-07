@@ -63,6 +63,23 @@ export const sendWelcomEmail = async (toEmail, name) => {
     await sendEmail(toEmail, subject, templateName, additionalData);
 };
 
+export const sendDeactivationEmail = async (toEmail: string, name: string) => {
+    const subject = 'Your access to the application has been deactivated';
+    const templateName = 'deactivation';
+    const additionalData = {
+        name,
+    };
+    await sendEmail(toEmail, subject, templateName, additionalData);
+};
+
+export const sendReactivationEmail = async (toEmail: string, name: string) => {
+    const subject = 'Your access to the application has been restored';
+    const templateName = 'reactivation';
+    const additionalData = {
+        name,
+    };
+    await sendEmail(toEmail, subject, templateName, additionalData);
+};
 
 
 
@@ -70,7 +87,7 @@ export const sendWelcomEmail = async (toEmail, name) => {
 
 export const sendOtpEmail = async (email: string, otp: string, name: string) => {
     const subject = 'Verify your email with OTP';
-    const appName = 'Construction Inspection';
+    const appName = 'ProjectSphere';
     const year = new Date().getFullYear();
 
 
@@ -88,7 +105,7 @@ export const sendOtpEmail = async (email: string, otp: string, name: string) => 
 
 export const resetPasswordEmail = async (email: string, mailLink: string, name: string) => {
     const subject = 'Reset Your Password';
-    const appName = 'Construction Inspection';
+    const appName = 'ProjectSphere';
     const year = new Date().getFullYear();
     const additionalData = {
         appName, year, name, mailLink
@@ -101,25 +118,6 @@ export const resetPasswordEmail = async (email: string, mailLink: string, name: 
 
 
 
-export const sendStakeholderEmail = async (
-    toEmail: string,
-    title: string,
-    message: string,
-    username: string,
-    projectName: string,
-    adminName: string
-) => {
-    const subject = title;
-    const templateName = 'stakeholderNotification';
-    const additionalData = {
-        title,
-        message,
-        username,
-        projectName,
-        adminName
-    };
-    await sendEmail(toEmail, subject, templateName, additionalData);
-};
 
 
 

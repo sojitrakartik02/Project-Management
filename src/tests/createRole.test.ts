@@ -37,7 +37,7 @@ describe('Create Roles and permission', () => {
                 await role.save();
             }
         }
-    }, 15000); // increased timeout
+    }, 30000); // increased timeout
 
     afterAll(async () => {
         await new Promise(resolve => app.httpServer.close(resolve));

@@ -25,7 +25,10 @@
     "paths": {
       "@/*": ["src/*"],
       "@Auth/*": ["Modules/Auth/*"],
+      "@userManagement/*": ["Modules/userManagement/*"],
+      "@ProjectManager/*": ["Modules/ProjectManager/*"],
       "@config/*": ["config/*"],
+      "@Project/*": ["Modules/Project/*"],
       "@database/*": ["database/*"],
       "@helpers/*": ["utils/helpers/*"],
       "@exceptions/*": ["utils/exceptions/*"],
