@@ -50,6 +50,13 @@ export interface IUser {
     refreshToken: string
     refreshTokenExpiry: Date
     isRememberMe: boolean
+
+
+    inviteStatus?: 'WaitingToAccept' | 'Active' | 'Deactivated'
+    invitedAt: Date
+    acceptedInviteAt: Date
+    firstName?: string
+    lastName?: string
 }
 
 

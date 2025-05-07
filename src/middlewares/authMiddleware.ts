@@ -28,12 +28,10 @@ export const getAuthenticatedUser = async (req: Request) => {
     const user = await User.findOne({ _id: decoded._id })
 
 
-    console.log("user", user.sessionId !== decoded.sessionId)
 
     if (!user || !user.sessionId || user.sessionId !== decoded.sessionId) {
         throw new HttpException(status.Unauthorized, messages['en'].General.sessionExpired);
     }
-
 
     if (!user || !user.isActive) {
         throw new HttpException(status.Unauthorized, messages[req.userLanguage].General.invalid.replace("##", messages[req.userLanguage].User.user));
@@ -67,6 +65,135 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 };
 
+
+
+export const isUserPermissionArray = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en';
+
+    try {
+        const user = await getAuthenticatedUser(req);
+        const userRole = user.roleId instanceof Types.ObjectId
+            ? await Role.findById(user.roleId.toString())
+            : user.roleId;
+
+        let roleIds: string[] = [];
+
+        if (Array.isArray(req.body) && req.body.every(item => item.roleId)) {
+            roleIds = req.body.map(item => item.roleId);
+        }
+        else if (Array.isArray(req.body.roleId)) {
+            const usersToDelete = await User.find({ _id: { $in: req.body.roleId } }, { roleId: 1 });
+
+            roleIds = usersToDelete.map(user => user.roleId.toString());
+        } else {
+            throw new HttpException(status.BadRequest, 'Invalid request structure.');
+        }
+
+        if (userRole.name === 'Admin') {
+            req.user = user;
+            return next(); // Admin can do anything
+        }
+
+        const allowedRolesForPM = [
+            'UI/UX Designer',
+            'HTML Developer',
+            'Frontend Developer',
+            'Backend Developer',
+            'Full stack Developer',
+            'QA',
+            'Sales',
+            'BA',
+            'Other'
+        ];
+
+        if (userRole.name === 'Project Manager') {
+            const roles = await Role.find({ _id: { $in: roleIds } });
+
+            for (const role of roles) {
+                if (!allowedRolesForPM.includes(role.name)) {
+                    throw new HttpException(status.Forbidden, messages[language].General.permission);
+
+                }
+            }
+
+            req.user = user;
+            return next();
+        }
+
+        throw new HttpException(status.Forbidden, messages[language].General.permission);
+
+    } catch (error) {
+        console.error("Middleware error:", error);
+        if (error instanceof HttpException) {
+            return res.status(error.status).json({
+                status: error.status,
+                message: error.message,
+            });
+        }
+        return res.status(status.InternalServerError).json({
+            status: status.InternalServerError,
+            message: messages[language].General.error,
+        });
+    }
+};
+
+
+export const isuserCreatePermission = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en';
+
+    try {
+        const user = await getAuthenticatedUser(req);
+        const userRole = user.roleId instanceof Types.ObjectId
+            ? await Role.findById(user.roleId.toString())
+            : user.roleId;
+
+        const targetRole = req.body.roleId;
+
+        if (userRole.name === 'Admin') {
+            req.user = user
+            return next();
+        }
+
+        const targetedRoleName = await Role.findById(targetRole.toString())
+
+        if (userRole.name === 'Project Manager') {
+            const allowedRolesForPM = [
+                'UI/UX Designer',
+                'HTML Developer',
+                'Frontend Developer',
+                'Backend Developer',
+                'Full stack Developer',
+                'QA',
+                'Sales',
+                'BA',
+                'Other'
+            ];
+            console.log("targetRole", targetedRoleName.name)
+            if (allowedRolesForPM.includes(targetedRoleName.name)) {
+                req.user = user
+                return next();
+            } else {
+                throw new HttpException(status.Forbidden, messages[language].General.permission);
+            }
+        }
+
+        throw new HttpException(status.Forbidden, messages[language].General.permission);
+    } catch (error) {
+        if (error instanceof HttpException) {
+            return res.status(error.status).json({
+                status: error.status,
+                message: error.message,
+            });
+        }
+        return res.status(status.InternalServerError).json({
+            status: status.InternalServerError,
+            message: messages[language].General.error,
+        });
+    }
+};
+
+
+
 export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
     const language = req.userLanguage ?? 'en'
     try {
@@ -78,6 +205,7 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
         if (!userRole || userRole.name !== 'Admin') {
             throw new HttpException(status.Forbidden, messages[language].General.permission);
         }
+        console.log("userRole", userRole)
 
         req.user = user;
         next();

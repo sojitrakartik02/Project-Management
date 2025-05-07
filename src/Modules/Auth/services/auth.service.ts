@@ -30,6 +30,7 @@ import {
 import { messages, status } from '@utils/helpers/api.responses';
 
 import { sign } from 'jsonwebtoken';
+import ProjectManager from '@ProjectManager/models/projectManager.model';
 
 @Service()
 export class AuthService {
@@ -116,7 +117,6 @@ export class AuthService {
                     },
                 }
             );
-
 
             return {
                 user: {
@@ -328,6 +328,7 @@ export class AuthService {
                 user.isVerifyOtpAt.getTime() + parseDurationToMs(RESET_WINDOW_MINUTES) * 60 * 1000
             );
 
+
             if (new Date() > resetWindowExpiry && user.isFirstTimeResetPassword !== true) {
                 throw new HttpException(
                     status.Unauthorized,
@@ -347,7 +348,7 @@ export class AuthService {
                     status.BadRequest,
                     messages[language].General.does_not_match
                         .replace('##', messages[language].User.password)
-                        .replace('%%', messages[language].General.match)
+                        .replace('%%', messages[language].User.match)
                 );
             }
 
@@ -363,21 +364,39 @@ export class AuthService {
             await User.updateOne(
                 { _id: user._id },
                 {
-                    failedLoginAttempts: 0,
-                    lockUntil: null,
-                    isFirstTimeResetPassword: null,
-                    'accountSetting.passwordHash': passwordHash,
-                    isVerifiedOtp: null,
-                    passwordUpdatedAt: new Date(),
-                    forgotPassword: null,
-                    forgotpasswordTokenExpiry: null,
-                    token: null,
-                    tokenExpiry: null,
-                    refreshToken: null,
-                    refreshTokenExpiry: null,
-                    sessionId: null,
+                    $set: {
+                        'accountSetting.passwordHash': passwordHash,
+                        passwordUpdatedAt: new Date(),
+                    },
+                    $unset: {
+                        isVerifiedOtp: "",
+                        isVerifyOtpAt: "",
+                        forgotPassword: "",
+                        forgotpasswordTokenExpiry: "",
+                        token: "",
+                        tokenExpiry: "",
+                        refreshToken: "",
+                        refreshTokenExpiry: "",
+                        sessionId: "",
+                        isFirstTimeResetPassword: "",
+                        failedLoginAttempts: "",
+                        lockUntil: "",
+                    }
                 }
-            );
+            )
+            const isProjectManager = await ProjectManager.exists({ userId: user._id });
+            if (isProjectManager) {
+                await User.updateOne(
+                    { _id: user._id, 'inviteStatus': { $ne: 'Accept' } },
+                    {
+                        $set: {
+                            inviteStatus: 'Accept',
+                            acceptedInviteAt: new Date()
+                        }
+                    }
+                )
+            }
+
         } catch (error) {
             if (error instanceof HttpException) throw error;
             throw new HttpException(status.InternalServerError, messages[language].General.error);
@@ -386,7 +405,7 @@ export class AuthService {
 
     public async getAllUser(createdBy: string, language: string = 'English'): Promise<IUser[]> {
         try {
-            return await User.find({ createdBy }).select(
+            return await User.find({ createdBy, isDeleted: false }).select(
                 '-accountSetting -permissions -restrictedPermissions -forgotPassword -forgotpasswordTokenExpiry -tokenExpiry -isFirstTimeResetPassword -failedLoginAttempts -lockUntil -otp -otpCreatedAt -otpExpiresAt -isDeleted -deletedAt -token -isVerifiedOtp -isVerifyOtpAt -isPasswordUpdate -passwordUpdatedAt -isActive -refreshToken -refreshTokenExpiry -sessionId'
             );
         } catch (error) {

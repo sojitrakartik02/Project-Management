@@ -9,7 +9,7 @@ const userSchema = new Schema<IUser>(
         email: {
             type: String,
             required: true,
-            unique: true,
+
             lowercase: true,
             match: /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/,
         },
@@ -17,6 +17,7 @@ const userSchema = new Schema<IUser>(
         roleId: {
             type: ObjectId,
             required: true,
+            ref: 'Role'
         },
         isActive: {
             type: Boolean,
@@ -65,11 +66,26 @@ const userSchema = new Schema<IUser>(
             ref: 'User',
 
         },
+        inviteStatus: {
+            type: String,
+            enum: ['WaitingToAccept', 'Accept', 'Deactivated'],
+            default: 'WaitingToAccept'
+        },
+        invitedAt: { type: Date },
+        acceptedInviteAt: { type: Date },
+
+        firstName: { type: String },
+        lastName: { type: String },
+
+
+
+
         notificationPreferences: {
             type: [String],
             enum: ['email', 'sms', 'inApp'],
             default: ['email', 'inApp'],
         },
+
         permissions: [{ type: String, default: [] }],
         restrictedPermissions: [{ type: String, default: [] }],
         forgotPassword: { type: String, required: false, default: null },
@@ -85,7 +101,35 @@ const userSchema = new Schema<IUser>(
     },
     { timestamps: true, versionKey: false }
 );
+userSchema.pre('save', async function (next) {
+    try {
+        const user = this as IUser
+        if (!user.accountSetting.userName) {
+            user.accountSetting ??= {}
+            user.accountSetting.userName ??= await generateUniqueUserName(user.email)
+        }
+        next()
+    } catch (error) {
+        next(error)
+    }
+})
 
+
+async function generateUniqueUserName(email: string): Promise<string> {
+    let baseUserName = email.split("@")[0];
+    let userName = baseUserName;
+    let counter = 1;
+
+    while (await mongoose.model("User").exists({ userName })) {
+        userName = `${baseUserName}${counter}`;
+        counter++;
+    }
+
+    return userName;
+}
+
+userSchema.index({ email: 1, createdBy: 1 }, { unique: true })
+userSchema.index({ createdBy: 1 })
 
 const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
 export default User
