@@ -173,33 +173,29 @@ export class userManagementService {
             await Promise.all(users.map(async (user) => {
                 const roleName = (user.roleId as any).name;
 
-                if (roleName === 'Project Manager') {
-                    const manager = await ProjectManager.findOne({ userId: user._id, isDeleted: false });
-                    if (manager) {
-                        if (manager.assignedProjects.length > 0) {
-                            throw new HttpException(
-                                status.BadRequest,
-                                messages[language].User.userDelete.replace("##", `${user.firstName}`));
-                        }
-                        await ProjectManager.updateOne(
-                            { userId: user._id },
-                            { $set: { isDeleted: true, deletedAt: new Date(), status: 'Deactivated' } }
-                        );
-                    }
-                } else {
-                    const teamMember = await TeamMember.findOne({ userId: user._id, isDeleted: false });
-                    if (teamMember) {
-                        if (teamMember.assignedProjects.length > 0) {
-                            throw new HttpException(
-                                status.BadRequest,
-                                messages[language].User.userDelete.replace("##", `${user.firstName}`));
+                //  Check if user is assigned in any project (as manager or team member)
+                // const isAssignedAsManager = await Project.exists({ assignedProjectManager: user._id });
+                // const isAssignedAsTeamMember = await Project.exists({ assignedTeamMembers: user._id });
 
-                        }
-                        await TeamMember.updateOne(
-                            { userId: user._id },
-                            { $set: { isDeleted: true, deletedAt: new Date(), status: 'Inactive' } }
-                        );
-                    }
+                // if (isAssignedAsManager || isAssignedAsTeamMember) {
+                //     throw new HttpException(
+                //         status.BadRequest,
+                //         messages[language].User.userDelete.replace("##", `${user.firstName}`)
+                //     );
+                // }
+
+                // Handle soft-delete for ProjectManager
+                if (roleName === 'Project Manager') {
+                    await ProjectManager.updateOne(
+                        { userId: user._id },
+                        { $set: { isDeleted: true, deletedAt: new Date(), status: 'Deactivated' } }
+                    );
+                } else {
+                    // Handle soft-delete for TeamMember
+                    await TeamMember.updateOne(
+                        { userId: user._id },
+                        { $set: { isDeleted: true, deletedAt: new Date(), status: 'Inactive' } }
+                    );
                 }
             }));
 
@@ -312,7 +308,151 @@ export class userManagementService {
         }
     }
 
+
+    public async getAllUsers(
+        userId: string,
+        page: number,
+        limit: number,
+        search: string,
+        roleFilter: string,
+        sortBy: string,
+        sortOrder: string,
+        language: string
+    ): Promise<any> {
+        try {
+            const currentUser = await User.findById(userId).lean();
+            if (!currentUser) throw new HttpException(status.BadRequest, "User not found");
+
+            const currentRole = await Role.findById(currentUser.roleId).lean();
+            if (!currentRole) throw new HttpException(status.BadRequest, "Role not found");
+
+            if (!["Admin", "Project Manager"].includes(currentRole.name)) {
+                throw new HttpException(status.Forbidden, "You do not have permission to view users");
+            }
+
+            const skip = (page - 1) * limit;
+            const nameRegex = new RegExp(search.trim(), 'i');
+            const roleRegex = roleFilter ? new RegExp(roleFilter.trim(), 'i') : null;
+
+            // Base filter (name, userName, etc.)
+            const baseFilter: any = {
+                isDeleted: false,
+                $or: [
+                    { firstName: nameRegex },
+                    { lastName: nameRegex },
+                    {
+                        $expr: {
+                            $regexMatch: {
+                                input: { $concat: ['$firstName', ' ', '$lastName'] },
+                                regex: nameRegex
+                            }
+                        }
+                    },
+                    { 'accountSetting.userName': nameRegex }
+                ]
+            };
+
+            // if (currentRole.name === "Project Manager") {
+            //     const projectsManaged = await Project.find({ assignedProjectManager: currentUser._id })
+            //         .select("assignedTeamMembers")
+            //         .lean();
+
+            //     if (!projectsManaged.length) return { users: [], total: 0 };
+
+            //     const assignedUserIds = new Set<string>();
+            //     projectsManaged.forEach(project => {
+            //         project.assignedTeamMembers?.forEach((id: any) => assignedUserIds.add(id.toString()));
+            //     });
+
+            //     baseFilter._id = { $in: Array.from(assignedUserIds) };
+            // }
+
+
+            // Full aggregation with role name filter
+            const pipeline: any[] = [
+                { $match: baseFilter },
+                {
+                    $lookup: {
+                        from: "roles",
+                        localField: "roleId",
+                        foreignField: "_id",
+                        as: "role"
+                    }
+                },
+                { $unwind: "$role" },
+            ];
+
+            if (roleRegex) {
+                pipeline.push({
+                    $match: { "role.name": { $regex: roleRegex } }
+                });
+            }
+
+            pipeline.push(
+                {
+                    $addFields: {
+                        roleName: "$role.name"
+                    }
+                },
+                {
+                    $sort: {
+                        ...(sortBy === "roleName"
+                            ? { roleName: sortOrder === "desc" ? -1 : 1, firstName: 1 }
+                            : { firstName: sortOrder === "desc" ? -1 : 1 })
+                    }
+                },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        email: 1,
+                        firstName: 1,
+                        lastName: 1,
+                        roleId: 1,
+                        roleName: 1,
+                        isActive: 1,
+                        joiningDate: 1,
+                        "accountSetting.userName": 1
+                    }
+                }
+            );
+
+            const countPipeline = [
+                ...pipeline.slice(0, pipeline.findIndex(p => '$sort' in p || '$skip' in p || '$limit' in p)),
+                { $count: "total" }
+            ];
+
+            const [users, totalResult] = await Promise.all([
+                User.aggregate(pipeline),
+                User.aggregate(countPipeline)
+            ]);
+
+            const total = totalResult[0]?.total || 0;
+
+            return {
+                users,
+                total,
+                page,
+                totalPage: Math.ceil(total / limit)
+            };
+
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                status.InternalServerError,
+                messages[language].General.errorFetching.replace("##", messages[language].User.user)
+            );
+        }
+    }
+
+
 }
+
+
+
+
+
 
 
 

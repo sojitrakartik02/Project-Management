@@ -2,17 +2,6 @@ import mongoose, { Schema, Model } from 'mongoose';
 import { IProjectManager } from '../interfaces/projectManager.interface';
 
 const ObjectId = Schema.Types.ObjectId;
-export const AssignedProjectSchema = new Schema({
-    project: {
-        type: ObjectId,
-        ref: 'Project',
-        required: true,
-    },
-    assignedAt: {
-        type: Date,
-        default: Date.now,
-    }
-}, { _id: false });
 
 
 const projectManagerSchema = new Schema<IProjectManager>(
@@ -22,7 +11,6 @@ const projectManagerSchema = new Schema<IProjectManager>(
             ref: 'User',
             required: true,
         },
-        assignedProjects: [AssignedProjectSchema],
         status: {
             type: String,
             enum: ['Active', 'Deactivated'],

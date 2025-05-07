@@ -1,4 +1,3 @@
-import { AssignedProjectSchema } from '@ProjectManager/models/projectManager.model';
 import { ITeamMember } from '@userManagement/interfaces/teamMember.interface';
 import mongoose, { Schema, Model } from 'mongoose';
 
@@ -12,7 +11,6 @@ const teamMemberSchema = new Schema<ITeamMember>(
             unique: true,
         },
 
-        assignedProjects: [AssignedProjectSchema],
         status: {
             type: String,
             enum: ['Active', 'Inactive'],
