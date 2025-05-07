@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { compareToken, verifyJWT } from '@utils/helpers/utilities.services';
+import { verifyJWT } from '@utils/helpers/utilities.services';
 import User from '@Auth/models/auth.model';
 import Role from '../Modules/Role/models/role.model';
 import { HttpException } from '../utils/exceptions/httpException';
@@ -7,8 +7,7 @@ import { Types } from 'mongoose';
 import { IPermission } from '../Modules/Permission/interfaces/Permission.interface';
 import Permission from '../Modules/Permission/models/Permission.model';
 import { jsonStatus, messages, status } from '../utils/helpers/api.responses';
-import { REFRESH_TOKEN } from '@config/index';
-import { DataStoredInToken } from '@Auth/interfaces/auth.interface';
+import userRoles from '@userManagement/constant/userStatus.json'
 
 
 export const getAuthenticatedUser = async (req: Request) => {
@@ -94,23 +93,13 @@ export const isUserPermissionArray = async (req: Request, res: Response, next: N
             return next(); // Admin can do anything
         }
 
-        const allowedRolesForPM = [
-            'UI/UX Designer',
-            'HTML Developer',
-            'Frontend Developer',
-            'Backend Developer',
-            'Full stack Developer',
-            'QA',
-            'Sales',
-            'BA',
-            'Other'
-        ];
+
 
         if (userRole.name === 'Project Manager') {
             const roles = await Role.find({ _id: { $in: roleIds } });
 
             for (const role of roles) {
-                if (!allowedRolesForPM.includes(role.name)) {
+                if (!userRoles.allowedRolesForPM.map(r => r.toLowerCase()).includes(role.name.toLowerCase())) {
                     throw new HttpException(status.Forbidden, messages[language].General.permission);
 
                 }
@@ -123,7 +112,7 @@ export const isUserPermissionArray = async (req: Request, res: Response, next: N
         throw new HttpException(status.Forbidden, messages[language].General.permission);
 
     } catch (error) {
-        console.error("Middleware error:", error);
+
         if (error instanceof HttpException) {
             return res.status(error.status).json({
                 status: error.status,
@@ -157,22 +146,13 @@ export const isuserCreatePermission = async (req: Request, res: Response, next: 
         const targetedRoleName = await Role.findById(targetRole.toString())
 
         if (userRole.name === 'Project Manager') {
-            const allowedRolesForPM = [
-                'UI/UX Designer',
-                'HTML Developer',
-                'Frontend Developer',
-                'Backend Developer',
-                'Full stack Developer',
-                'QA',
-                'Sales',
-                'BA',
-                'Other'
-            ];
-            console.log("targetRole", targetedRoleName.name)
-            if (allowedRolesForPM.includes(targetedRoleName.name)) {
-                req.user = user
+
+            if (userRoles.allowedRolesForPM.map(role => role.toLowerCase()).includes(targetedRoleName.name.toLowerCase())
+            ) {
+                req.user = user;
                 return next();
             } else {
+
                 throw new HttpException(status.Forbidden, messages[language].General.permission);
             }
         }
@@ -205,7 +185,7 @@ export const isAdmin = async (req: Request, res: Response, next: NextFunction) =
         if (!userRole || userRole.name !== 'Admin') {
             throw new HttpException(status.Forbidden, messages[language].General.permission);
         }
-        console.log("userRole", userRole)
+
 
         req.user = user;
         next();
@@ -319,6 +299,12 @@ export const checkPermission = (requiredPermission: string) => {
             req.user = user;
             next();
         } catch (error) {
+            if (error instanceof HttpException) {
+                return res.status(error.status).json({
+                    status: error.status,
+                    message: error.message,
+                });
+            }
             return res.status(status.Forbidden).json({
                 status: jsonStatus.Forbidden,
                 message: messages[req.userLanguage].General.permisssion,

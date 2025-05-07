@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Account Reactivated</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #28a745, #218838);
+            color: #ffffff;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .content p {
+            font-size: 16px;
+            margin: 15px 0;
+        }
+
+        .footer {
+            padding: 20px;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            background-color: #fafafa;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Account Reactivated</h1>
+        </div>
+        <div class="content">
+            <p>Hi <strong>
+                    <%= name %>
+                </strong>,</p>
+            <p>Your access to the application has been <strong>restored</strong>. You may now log in with your existing
+                credentials.</p>
+            <p>If you experience any issues, feel free to reach out to support.</p>
+            <p>Welcome back!<br>The <strong>
+                    <%= domainName %>
+                </strong> Team</p>
+        </div>
+        <div class="footer">
+            &copy; <%= copyRightYear %>
+                <%= domainName %>. All rights reserved.
+        </div>
+    </div>
+</body>
+
+</html>

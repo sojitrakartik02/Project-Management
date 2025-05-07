@@ -1,7 +1,7 @@
 import { Routes } from "@interface/routes.interface";
 import { Router } from "express";
 import { userManagementController } from '@userManagement/controllers/userManagement.controller';
-import { authMiddleware, isAdmin, isuserCreatePermission, isUserPermissionArray } from "@middlewares/authMiddleware";
+import { authMiddleware, isuserCreatePermission, isUserPermissionArray } from "@middlewares/authMiddleware";
 
 /**
  * @swagger

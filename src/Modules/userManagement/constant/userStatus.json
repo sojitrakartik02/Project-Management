@@ -1,0 +1,15 @@
+{
+  "statuses": ["Active", "Inactive", "Deactivated"],
+  "inviteStatuses": ["WaitingToAccept", "Accept", "Deactivated"],
+  "notificationPreference": ["email", "sms", "inApp"],
+  "allowedRolesForPM": [
+    "UI/UX Designer",
+    "HTML Developer",
+    "Frontend Developer",
+    "Backend Developer",
+    "Full stack Developer",
+    "QA",
+    "Sales",
+    "BA"
+  ]
+}

@@ -1,4 +1,27 @@
 import { Document, FlattenMaps, Types } from "mongoose";
+import userStatus from '@userManagement/constant/userStatus.json'
+
+
+
+export const StatusEnum = {
+    ACTIVE: userStatus.statuses[0],
+    INACTIVE: userStatus.statuses[1],
+    DEACTIVATED: userStatus.statuses[2],
+};
+
+export const InviteStatusEnum = {
+    WAITING_TO_ACCEPT: userStatus.inviteStatuses[0],
+    ACCEPTED: userStatus.inviteStatuses[1],
+    DEACTIVATED: userStatus.inviteStatuses[2],
+};
+
+export const NotificationPreferenceEnum = {
+    EMAIL: userStatus.notificationPreference[0],
+    SMS: userStatus.notificationPreference[1],
+    IN_APP: userStatus.notificationPreference[2],
+};
+export const AllowedRolesForPM = userStatus.allowedRolesForPM;
+
 
 export interface IUser {
     _id?: string
@@ -26,7 +49,7 @@ export interface IUser {
 
 
     createdBy?: Types.ObjectId;
-    notificationPreferences?: ('email' | 'sms' | 'inApp')[];
+    notificationPreferences?: (typeof userStatus.notificationPreference)[number][];
     permissions?: string[];
     restrictedPermissions?: string[];
 
@@ -52,11 +75,12 @@ export interface IUser {
     isRememberMe: boolean
 
 
-    inviteStatus?: 'WaitingToAccept' | 'Active' | 'Deactivated'
+    inviteStatus?: (typeof userStatus.inviteStatuses)[number]
     invitedAt: Date
     acceptedInviteAt: Date
     firstName?: string
     lastName?: string
+    status?: (typeof userStatus.statuses)[number]
 }
 
 
@@ -90,12 +114,13 @@ export interface IUserResponse extends Document {
     roleName: string
     token: string
     isActive?: boolean
-    notificationPreferences?: ('email' | 'sms' | 'inApp')[]
+    notificationPreferences?: (typeof userStatus.notificationPreference)[number][]
     joiningDate?: Date
     accountSetting?: {
         userName?: string;
         passwordHash?: string;
         lastLogin?: Date;
     };
-
+    // status?: (typeof StatusEnum)[keyof typeof StatusEnum];
+    status: (typeof userStatus.statuses)[number]
 }
