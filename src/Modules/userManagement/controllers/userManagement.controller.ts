@@ -88,6 +88,45 @@ export class userManagementController {
 
 
 
+    public getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+        const language = req.userLanguage ?? 'en';
+        try {
+            const userId = req.user._id;
+            const {
+                page = 1,
+                limit = 50,
+                search = "",
+                role = "",
+                sortBy = "firstName",
+                sortOrder = "asc",
+            } = req.query;
+
+            const result = await this.userMService.getAllUsers(
+                userId,
+                parseInt(page as string),
+                parseInt(limit as string),
+                search as string,
+                role as string,
+                sortBy as string,
+                sortOrder as string,
+                language
+            );
+
+            return res.status(status.OK).json({
+                status: jsonStatus.OK,
+                message: messages[language].General.get_success.replace("##", messages[language].User.user),
+                data: result.users,
+                total: result.total,
+                page: result.page,
+                totalPage: result.totalPage,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+
+
 
 
 }
