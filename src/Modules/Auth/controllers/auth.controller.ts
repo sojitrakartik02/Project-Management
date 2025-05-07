@@ -14,7 +14,7 @@ export class AuthController {
             req.body = pick(req.body, ['email', 'password', 'isRememberMe']);
             removenull(req.body);
             const language = req.userLanguage ?? 'en'
-            const { email, password, isRememberMe=false } = req.body;
+            const { email, password, isRememberMe = false } = req.body;
 
 
             const { user, token: accessToken, refreshToken } = await this.authService.login(email.toLowerCase(), password, isRememberMe, language);
@@ -22,7 +22,7 @@ export class AuthController {
                 status: jsonStatus.OK,
                 message: messages[language].User.succ_login,
                 data: {
-                    user,
+                    ...user,
                     accessToken,
                     refreshToken,
                 },
