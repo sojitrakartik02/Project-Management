@@ -54,7 +54,9 @@ export class userManagementService {
                             isFirstTimeResetPassword: true,
                             isVerifiedOtp: true,
                             isVerifyOtpAt: new Date(),
-                            createdBy: createdBy
+                            createdBy: createdBy,
+                            firstName: data.firstName,
+                            lastName: data.lastName
                         },
                         $unset: {
                             token: "",
@@ -380,6 +382,8 @@ export class userManagementService {
                     }
                 },
                 { $unwind: "$role" },
+                { $match: { "role.name": { $ne: "Admin" } } },
+
             ];
 
             if (roleRegex) {
