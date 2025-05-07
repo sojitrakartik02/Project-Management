@@ -8,6 +8,8 @@ info:
 tags:
   - name: Auth
     description: Authentication operations
+  - name: User Management
+    description: User Management APIs
   # - name: Upload
 
 paths:
@@ -367,7 +369,311 @@ paths:
         '500':
           description: Internal server error
 
-  
+  /user:
+    post:
+      tags:
+        - User Management
+      summary: Create a new user
+      description: Creates a new user (Admin can create Project Managers; Project Managers can create team members). Sends an invite email.
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: User data for creation
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: 'user@example.com'
+                firstName:
+                  type: string
+                  example: 'John'
+                lastName:
+                  type: string
+                  example: 'Doe'
+                roleId:
+                  type: string
+                  example: '660d3bca2e6b2a001d8e43aa'
+              required:
+                - email
+                - firstName
+                - roleId
+      responses:
+        200:
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'User added successfully'
+                    data:
+                      _id: '67d9368b9de456a3bf0a00a6'
+                      email: 'user@example.com'
+                      firstName: 'John'
+                      lastName: 'Doe'
+                      roleId: '660d3bca2e6b2a001d8e43aa'
+                      isActive: true
+                      isDeleted: false
+                      joiningDate: '2025-05-07T00:00:00.000Z'
+                      accountSetting:
+                        userName: 'johndoe'
+        400:
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        403:
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+        409:
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictResponse'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+    delete:
+      tags:
+        - User Management
+      summary: Delete users
+      description: Soft deletes users by IDs (Admin can delete Project Managers not assigned to projects; Project Managers can delete their team members).
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Array of user IDs to delete
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleId:
+                  type: array
+                  items:
+                    type: string
+                  example: ['67d9368b9de456a3bf0a00a6']
+              required:
+                - roleId
+      responses:
+        200:
+          description: Users deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'User deleted successfully'
+                    data:
+                      deletedCount: 1
+        400:
+          description: Invalid or empty ID array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        403:
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+        404:
+          description: Users not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+    get:
+      tags:
+        - User Management
+      summary: Get all users
+      description: Retrieves a paginated list of users with optional filtering and sorting (Admin or Project Manager access).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+          description: Number of users per page
+        - in: query
+          name: search
+          schema:
+            type: string
+            default: ''
+          description: Search term for firstName, lastName, or username
+        - in: query
+          name: role
+          schema:
+            type: string
+            default: ''
+          description: Filter by role name
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            default: 'firstName'
+          description: Field to sort by (firstName or roleName)
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            default: 'asc'
+            enum: [asc, desc]
+          description: Sort order
+      responses:
+        200:
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'Users retrieved successfully'
+                    data:
+                      - _id: '67d9368b9de456a3bf0a00a6'
+                        email: 'user@example.com'
+                        firstName: 'John'
+                        lastName: 'Doe'
+                        roleId: '660d3bca2e6b2a001d8e43aa'
+                        roleName: 'Project Manager'
+                        isActive: true
+                        joiningDate: '2025-05-07T00:00:00.000Z'
+                        accountSetting:
+                          userName: 'johndoe'
+                    total: 1
+                    page: 1
+                    totalPage: 1
+        403:
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+  /user/{id}:
+    put:
+      tags:
+        - User Management
+      summary: Update user profile
+      description: Updates user profile fields (Admin can update any user; Project Managers can update their team members; users can update themselves).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            example: '67d9368b9de456a3bf0a00a6'
+          description: User ID
+      requestBody:
+        description: Fields to update
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: 'John'
+                lastName:
+                  type: string
+                  example: 'Doe'
+                fullName:
+                  type: string
+                  example: 'John Doe'
+      responses:
+        200:
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    status: 200
+                    message: 'User updated successfully'
+                    data:
+                      _id: '67d9368b9de456a3bf0a00a6'
+                      firstName: 'John'
+                      lastName: 'Doe'
+                      fullName: 'John Doe'
+                      email: 'user@example.com'
+                      roleId: '660d3bca2e6b2a001d8e43aa'
+                      isActive: true
+                      notificationPreferences: {}
+                      accountSetting:
+                        userName: 'johndoe'
+                      createdAt: '2025-05-07T00:00:00.000Z'
+                      updatedAt: '2025-05-07T00:00:00.000Z'
+        403:
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+        404:
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerErrorResponse'
+
+
+
 components:
   securitySchemes:
     bearerAuth:

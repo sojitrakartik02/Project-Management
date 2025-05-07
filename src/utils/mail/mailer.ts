@@ -63,6 +63,23 @@ export const sendWelcomEmail = async (toEmail, name) => {
     await sendEmail(toEmail, subject, templateName, additionalData);
 };
 
+export const sendDeactivationEmail = async (toEmail: string, name: string) => {
+    const subject = 'Your access to the application has been deactivated';
+    const templateName = 'deactivation';
+    const additionalData = {
+        name,
+    };
+    await sendEmail(toEmail, subject, templateName, additionalData);
+};
+
+export const sendReactivationEmail = async (toEmail: string, name: string) => {
+    const subject = 'Your access to the application has been restored';
+    const templateName = 'reactivation';
+    const additionalData = {
+        name,
+    };
+    await sendEmail(toEmail, subject, templateName, additionalData);
+};
 
 
 

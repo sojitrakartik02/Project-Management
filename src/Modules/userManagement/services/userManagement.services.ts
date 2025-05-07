@@ -1,21 +1,15 @@
+import { AllowedRolesForPM, InviteStatusEnum, StatusEnum } from "@Auth/interfaces/auth.interface";
 import User from "@Auth/models/auth.model";
 import { FRONTEND_URL, TOKEN_EXPIRY } from "@config/index";
 import { HttpException } from "@exceptions/httpException";
 import { messages, status } from "@helpers/api.responses";
 import { createJWT, parseDurationToMs } from "@helpers/utilities.services";
-import { resetPasswordEmail } from "@mail/mailer";
+import { resetPasswordEmail, sendDeactivationEmail } from "@mail/mailer";
 import Role from "@Role/models/role.model";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import ProjectManager from "@ProjectManager/models/projectManager.model";
 import { Service } from "typedi";
-import TeamMember from "@userManagement/models/teamMember.model";
 
-const teamMemberRoles = [
-    'UI/UX Designer', 'HTML Developer', 'Frontend Developer',
-    'Backend Developer', 'Full stack Developer', 'QA',
-    'Sales', 'BA', 'Other'
-];
 
 @Service()
 export class userManagementService {
@@ -54,7 +48,11 @@ export class userManagementService {
                             isFirstTimeResetPassword: true,
                             isVerifiedOtp: true,
                             isVerifyOtpAt: new Date(),
-                            createdBy: createdBy
+                            createdBy: createdBy,
+                            firstName: data.firstName,
+                            lastName: data.lastName,
+                            status: StatusEnum.ACTIVE
+
                         },
                         $unset: {
                             token: "",
@@ -68,9 +66,14 @@ export class userManagementService {
 
                 const reactivatedUser = await User.findOne({ email: data.email }).select("_id email firstName lastName roleId isActive isDeleted joiningDate accountSetting.userName"
                 ).lean();
-                const fName = reactivatedUser.firstName + (reactivatedUser.lastName ?? "");
-                const resetLink = `${FRONTEND_URL}/auth/reset-password/change?token=${resetToken}`;
-                await resetPasswordEmail(reactivatedUser.email, resetLink, fName);
+
+
+                if (role.name === "Project Manager") {
+
+                    const fName = data.firstName + (data.lastName ?? "");
+                    const resetLink = `${FRONTEND_URL}/auth/reset-password/change?token=${resetToken}`;
+                    await resetPasswordEmail(existingUser.email, resetLink, fName);
+                }
 
                 return reactivatedUser;
             }
@@ -86,12 +89,12 @@ export class userManagementService {
                 );
             }
 
-            if (role.name === "Admin") {
-                throw new HttpException(
-                    status.Forbidden,
-                    messages[language].General.Permission
-                );
-            }
+            // if (role.name === "Admin") {
+            //     throw new HttpException(
+            //         status.Forbidden,
+            //         messages[language].General.Permission
+            //     );
+            // }
 
             const randomPassword = this.generateRandomPassword();
             const hashedPassword = await bcrypt.hash(randomPassword, 10);
@@ -107,7 +110,7 @@ export class userManagementService {
                 joiningDate: new Date(),
                 invitedAt: new Date(),
                 createdBy: createdBy.toString(),
-                inviteStatus: 'WaitingToAccept',
+                inviteStatus: InviteStatusEnum.WAITING_TO_ACCEPT,
             });
 
             const resetTokenResult = createJWT(newUser, parseDurationToMs(TOKEN_EXPIRY));
@@ -129,19 +132,13 @@ export class userManagementService {
             ).lean();
 
             if (role.name === "Project Manager") {
-                await ProjectManager.create({ userId: newUser._id });
+
                 const fName = data.firstName + (data.lastName ?? "");
                 const resetLink = `${FRONTEND_URL}/auth/reset-password/change?token=${resetToken}`;
                 await resetPasswordEmail(newUser.email, resetLink, fName);
             }
 
-            if (teamMemberRoles.includes(role.name)) {
-                await TeamMember.create({
-                    userId: newUser._id,
-                    assignedProjects: [],
-                    status: 'Active',
-                });
-            }
+
 
             return userData;
         } catch (error) {
@@ -172,7 +169,10 @@ export class userManagementService {
 
             await Promise.all(users.map(async (user) => {
                 const roleName = (user.roleId as any).name;
-
+                if (roleName === 'Project Manager') {
+                    const name = user.firstName + user.lastName
+                    await sendDeactivationEmail(user.email, name)
+                }
                 //  Check if user is assigned in any project (as manager or team member)
                 // const isAssignedAsManager = await Project.exists({ assignedProjectManager: user._id });
                 // const isAssignedAsTeamMember = await Project.exists({ assignedTeamMembers: user._id });
@@ -185,18 +185,7 @@ export class userManagementService {
                 // }
 
                 // Handle soft-delete for ProjectManager
-                if (roleName === 'Project Manager') {
-                    await ProjectManager.updateOne(
-                        { userId: user._id },
-                        { $set: { isDeleted: true, deletedAt: new Date(), status: 'Deactivated' } }
-                    );
-                } else {
-                    // Handle soft-delete for TeamMember
-                    await TeamMember.updateOne(
-                        { userId: user._id },
-                        { $set: { isDeleted: true, deletedAt: new Date(), status: 'Inactive' } }
-                    );
-                }
+
             }));
 
 
@@ -213,6 +202,8 @@ export class userManagementService {
                         tokenExpiry: null,
                         forgotPassword: null,
                         forgotpasswordTokenExpiry: null,
+                        status: StatusEnum.DEACTIVATED,
+                        sessionId: null
                     },
                 }
             );
@@ -274,7 +265,7 @@ export class userManagementService {
                 if (targetRole === "Admin" || targetRole === "Project Manager") {
                     throw new HttpException(status.Forbidden, messages[language].General.permission);
                 }
-            } else if (teamMemberRoles.includes(requesterRole)) {
+            } else if (AllowedRolesForPM.includes(requesterRole)) {
                 if (!isSelf) {
                     throw new HttpException(status.Forbidden, messages[language].General.permission);
                 }
@@ -321,13 +312,13 @@ export class userManagementService {
     ): Promise<any> {
         try {
             const currentUser = await User.findById(userId).lean();
-            if (!currentUser) throw new HttpException(status.BadRequest, "User not found");
+            if (!currentUser) throw new HttpException(status.BadRequest, messages[language].General.not_found.replace('##', messages[language].User.user));
 
             const currentRole = await Role.findById(currentUser.roleId).lean();
-            if (!currentRole) throw new HttpException(status.BadRequest, "Role not found");
+            if (!currentUser) throw new HttpException(status.BadRequest, messages[language].General.not_found.replace('##', messages[language].Role.role));
 
             if (!["Admin", "Project Manager"].includes(currentRole.name)) {
-                throw new HttpException(status.Forbidden, "You do not have permission to view users");
+                throw new HttpException(status.Forbidden, messages[language].General.permission);
             }
 
             const skip = (page - 1) * limit;
@@ -380,6 +371,8 @@ export class userManagementService {
                     }
                 },
                 { $unwind: "$role" },
+                { $match: { "role.name": { $ne: "Admin" } } },
+
             ];
 
             if (roleRegex) {
@@ -413,7 +406,8 @@ export class userManagementService {
                         roleName: 1,
                         isActive: 1,
                         joiningDate: 1,
-                        "accountSetting.userName": 1
+                        "accountSetting.userName": 1,
+                        createdBy: 1
                     }
                 }
             );
