@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'ts-node-app', // Name of your app
-      script: 'dist/server.js', // Path to your built server file
+      script: 'dist/main.js', // Path to your built server file
       instances: 1, // pm2 instance count
       autorestart: true, // auto restart if process crash
       exec_mode: 'cluster', // Running in cluster mode for load balancing
