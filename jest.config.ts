@@ -16,6 +16,7 @@ const config: Config = {
         '^@helpers/(.*)$': '<rootDir>/src/utils/helpers/$1',
         '^@middlewares/(.*)$': '<rootDir>/src/middlewares/$1',
         '^@Auth/(.*)$': '<rootDir>/src/Modules/Auth/$1',
+        '^@userManagement/(.*)$': '<rootDir>/src/Modules/userManagement/$1'
     },
 
     setupFiles: ['<rootDir>/src/tests/jest.setup.ts'],

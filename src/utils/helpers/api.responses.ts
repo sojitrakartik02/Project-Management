@@ -28,7 +28,7 @@ export const messages = {
 
             profileImage: 'ProfileImage Id',
             Id: "id",
-            field: "field",
+            Property: "field",
 
             rate_limit_exceeded: "Too many requests from this IP, please try again later.",
             refreshToken: "refreshToken"
@@ -89,6 +89,9 @@ export const messages = {
 
         Notification: {
             notification: "Notification",
+        },
+        Project: {
+            project: 'Project'
         }
     },
 };

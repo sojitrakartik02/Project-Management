@@ -175,7 +175,7 @@ export function IsNotPastDate(validationOptions?: ValidationOptions) {
             validator: {
                 validate(value: Date) {
                     if (!value) return true;
-                    return dayjs(value).isSame(dayjs(), 'day') ?? dayjs(value).isAfter(dayjs());
+                    return dayjs(value).isSame(dayjs(), 'day') || dayjs(value).isAfter(dayjs());
                 },
                 defaultMessage(args: ValidationArguments) {
                     return `${args.property} should not be in the past`;

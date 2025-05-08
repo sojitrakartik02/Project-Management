@@ -7,20 +7,27 @@ import { status } from '../utils/helpers/api.responses';
 export const validationMiddleware = (type: any) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
-            req.body.language = req.userLanguage || 'English';
-            const dtoObj = plainToInstance(type, req.body);
+            req.body.language = req.userLanguage ?? 'en';
+            const dtoObj = plainToInstance(type, req.body, { enableImplicitConversion: true });
             const errors: ValidationError[] = await validate(dtoObj);
-
             if (errors.length > 0) {
-                const message = errors
-                    .map((error: ValidationError) => Object.values(error.constraints || {}).join(', '))
-                    .join(', ');
+                function extractMessages(errors: ValidationError[]): string[] {
+                    return errors.flatMap(error => {
+                        const constraints = Object.values(error.constraints || {});
+                        const childMessages = error.children ? extractMessages(error.children) : [];
+                        return [...constraints, ...childMessages];
+                    });
+                }
+
+                const message = extractMessages(errors).join(', ');
+
                 throw new HttpException(status.BadRequest, message);
             }
 
             req.body = dtoObj;
             next();
         } catch (error) {
+          
             next(error);
         }
     };
