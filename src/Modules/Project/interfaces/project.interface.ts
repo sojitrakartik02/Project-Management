@@ -10,12 +10,21 @@ export const projectStatus = {
     Cancelled: status.projectStatus[4]
 }
 
+
+export interface IClient {
+    name: string;
+    phoneNumber?: string;
+    email?: string;
+    skypeId?: string;
+    location?: string;
+}
 export interface IProject extends Document {
     name: string;
     description?: string;
     status: (typeof status.projectStatus)[number];
     startDate?: Date;
     endDate?: Date;
+    clients: IClient[];
     assignedProjectManager: Types.ObjectId | IUser;
     assignedTeamMembers: Types.ObjectId[] | IUser[];
     createdBy: Types.ObjectId | IUser;

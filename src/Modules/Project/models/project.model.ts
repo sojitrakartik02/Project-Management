@@ -1,6 +1,30 @@
 import mongoose, { Schema, Model } from 'mongoose';
-import { IProject } from '@Project/interfaces/project.interface';
+import { IClient, IProject, projectStatus } from '@Project/interfaces/project.interface';
 
+
+const ClientSchema: Schema = new Schema<IClient>({
+    name: {
+        type: String,
+        required: [true, 'Client name is required'],
+        trim: true,
+    },
+    phoneNumber: {
+        type: String,
+        trim: true,
+    },
+    email: {
+        type: String,
+        trim: true,
+    },
+    skypeId: {
+        type: String,
+        trim: true,
+    },
+    location: {
+        type: String,
+        trim: true,
+    },
+}, { _id: false });
 
 const ObjectId = Schema.Types.ObjectId
 
@@ -17,8 +41,12 @@ const ProjectSchema: Schema = new Schema<IProject>(
         },
         status: {
             type: String,
-            enum: ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
-            default: 'Not Started',
+            enum: Object.values(projectStatus),
+            default: projectStatus.Not_Started,
+        },
+        clients: {
+            type: [ClientSchema],
+            required: true,
         },
         startDate: {
             type: Date,
@@ -60,3 +88,4 @@ ProjectSchema.index({ name: 1 })
 
 const Project: Model<IProject> = mongoose.model<IProject>('Project', ProjectSchema);
 export default Project
+

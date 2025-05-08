@@ -173,6 +173,34 @@ export const isuserCreatePermission = async (req: Request, res: Response, next: 
 };
 
 
+export const isAdminorPM = async (req: Request, res: Response, next: NextFunction) => {
+    const language = req.userLanguage ?? 'en'
+    try {
+        const user = await getAuthenticatedUser(req)
+        const userRole = user.roleId instanceof Types.ObjectId
+            ? await Role.findById(user.roleId.toString())
+            : user.roleId
+        if (userRole.name !== 'Project Manager' && userRole.name !== 'Admin') {
+            throw new HttpException(status.Forbidden, messages[language].General.permission);
+
+        }
+        req.user = user;
+        next();
+    } catch (error) {
+
+        if (error instanceof HttpException) {
+            return res.status(error.status).json({
+                status: error.status,
+                message: error.message,
+            });
+        }
+        return res.status(status.InternalServerError).json({
+            status: status.InternalServerError,
+            message: messages[language].General.error,
+        });
+    }
+}
+
 
 export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
     const language = req.userLanguage ?? 'en'

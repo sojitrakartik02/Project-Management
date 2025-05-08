@@ -5,6 +5,7 @@ import Role from '../Modules/Role/models/role.model';
 import { connectDatabase } from '../database/index';
 import mongoose from 'mongoose';
 import { hashPassword } from '../utils/helpers/utilities.services';
+import { InviteStatusEnum, StatusEnum } from '@Auth/interfaces/auth.interface';
 
 
 describe('User Authentication Tests', () => {
@@ -29,25 +30,31 @@ describe('User Authentication Tests', () => {
 
 
         const pmcRole = await Role.findOne({ name: 'Admin' })
-        const passwordHash = await hashPassword('Admin@123');
+        const passwordHash = await hashPassword('Sachin@123');
 
         const AdminIser = new User({
-            email: `admin@admin.com`,
-            fullName: `Ninja Twch`,
-            phone: `9876543741`,
+            email: `sachin@ninjatechnolabs.com`,
+            fullName: `Sachin`,
+
             joiningDate: new Date(),
             isActive: true,
             roleId: pmcRole._id,
+            firstName: 'Sachin',
+            lastName: "Ninja",
+            inviteStatus: InviteStatusEnum.ACCEPTED,
+            invitedAt: new Date(),
+            acceptedInviteAt: new Date(),
+            isDeleted: false,
+            deletedAt: null,
 
-
+            status:StatusEnum.ACTIVE,
             accountSetting: {
 
                 passwordHash: passwordHash,
-                userName: "admin"
+                userName: "sachichNinja"
 
-            },
+            }
 
-            themePreference: 'light',
 
         });
 
