@@ -145,12 +145,18 @@ export class ProjectService {
 
     public async getById(id: string, createdBy: string, roleId: string, language: string) {
         try {
-            const role = await Role.findById(roleId)
 
-            const project = await Project.findById(id).populate('assignedProjectManager', ' firstName lastName ')
-                .populate('assignedTeamMembers', ' firstName lastName ')
-                .select('name description status startDate endDate clients.name assignedProjectManager assignedTeamMembers createdBy createdAt updatedAt')
+            const project = await Project.findById(id).populate('assignedProjectManager', 'email firstName lastName ')
+                .populate('assignedTeamMembers', 'email firstName lastName ')
+                .select('name description status startDate endDate clients assignedProjectManager assignedTeamMembers createdBy createdAt updatedAt')
                 .lean()
+            const role = await Role.findById(roleId)
+            if (role.name === 'Project Manager' && String(project.createdBy) !== String(createdBy)) {
+                throw new HttpException(
+                    status.Forbidden,
+                    messages[language].General.permission
+                );
+            }
             return project
         } catch (error) {
             if (error instanceof HttpException) throw error;
