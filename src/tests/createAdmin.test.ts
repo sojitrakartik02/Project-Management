@@ -30,7 +30,7 @@ describe('User Authentication Tests', () => {
 
 
         const pmcRole = await Role.findOne({ name: 'Admin' })
-        const passwordHash = await hashPassword('Sachin@123');
+        const passwordHash = await hashPassword('SachinNinjatech@123');
 
         const AdminIser = new User({
             email: `sachin@ninjatechnolabs.com`,

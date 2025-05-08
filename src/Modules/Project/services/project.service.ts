@@ -5,6 +5,8 @@ import { IProject } from "@Project/interfaces/project.interface";
 import Project from "@Project/models/project.model";
 import { Service } from "typedi";
 import { AllowedRolesForPM } from "@Auth/interfaces/auth.interface";
+import { QueryProjectsDto } from "@Project/dtos/project.dto";
+import Role from "@Role/models/role.model";
 @Service()
 export class ProjectService {
 
@@ -92,7 +94,7 @@ export class ProjectService {
                 .populate('assignedTeamMembers', '_id firstName lastName email')
                 .lean();
         } catch (error) {
-            console.log(error)
+
             if (error instanceof HttpException) throw error;
             throw new HttpException(
                 status.InternalServerError,
@@ -100,4 +102,45 @@ export class ProjectService {
             );
         }
     }
+
+
+
+    public async getAll(createdBy: string, roleId: string, filter: any, page: number, limit: number, sortOptions: any, language: string) {
+        try {
+
+            const role = await Role.findById(roleId)
+
+            if (role.name === 'Project Manager') {
+                filter.createdBy = createdBy
+
+            }
+            const [projects, total] = await Promise.all([
+
+                Project.find(filter)
+                    .skip((page - 1) * limit)
+                    .limit(limit)
+                    .sort(sortOptions)
+                    .populate('assignedProjectManager', ' firstName lastName ')
+                    .populate('assignedTeamMembers', ' firstName lastName ')
+                    .select('name description status startDate endDate clients.name assignedProjectManager assignedTeamMembers createdBy createdAt updatedAt')
+                    .lean(),
+                Project.countDocuments(filter)
+            ])
+            return {
+                data: projects,
+                total,
+                page,
+                totalPage: Math.ceil(total / limit),
+            };
+        } catch (error) {
+
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+                status.InternalServerError,
+                messages[language].General.errorFetching.replace("##", messages[language].Project.project)
+            );
+        }
+    }
+
+
 }

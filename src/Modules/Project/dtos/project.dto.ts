@@ -241,5 +241,8 @@ export class QueryProjectsDto {
     @IsEnum(['asc', 'desc'], {
         message: ({ object }) => messages[object['language'] ?? 'en'].General.invalid.replace('##', messages[object['language'] ?? 'en'].General.Property),
     })
-    sortOrder: string = 'asc';
+    sortOrder: 'asc' | 'desc' = 'desc';
+
+
+
 }
