@@ -3,7 +3,7 @@ import User from "@Auth/models/auth.model";
 import { FRONTEND_URL, TOKEN_EXPIRY } from "@config/index";
 import { HttpException } from "@exceptions/httpException";
 import { messages, status } from "@helpers/api.responses";
-import { createJWT, parseDurationToMs } from "@helpers/utilities.services";
+import { createJWT, parseDurationToMs, sanitiseString } from "@helpers/utilities.services";
 import { resetPasswordEmail, sendDeactivationEmail } from "@mail/mailer";
 import Role from "@Role/models/role.model";
 import bcrypt from "bcryptjs";
@@ -217,7 +217,7 @@ export class userManagementService {
 
             return { deletedCount: result.modifiedCount };
         } catch (error) {
-            console.log(error)
+            
             if (error instanceof HttpException) throw error;
             throw new HttpException(status.InternalServerError, messages[language].errorDeleting.replace("##", messages[language].User.user));
         }
@@ -289,7 +289,7 @@ export class userManagementService {
                 "_id firstName lastName fullName email roleId isActive notificationPreferences accountSetting.userName createdAt updatedAt"
             );
         } catch (error) {
-            console.log(error)
+
             if (error instanceof HttpException) throw error;
 
             throw new HttpException(
@@ -308,6 +308,7 @@ export class userManagementService {
         roleFilter: string,
         sortBy: string,
         sortOrder: string,
+        filters: any,
         language: string
     ): Promise<any> {
         try {
@@ -322,15 +323,16 @@ export class userManagementService {
             }
 
             const skip = (page - 1) * limit;
-            const nameRegex = new RegExp(search.trim(), 'i');
-            const roleRegex = roleFilter ? new RegExp(roleFilter.trim(), 'i') : null;
-
+            const nameRegex = new RegExp(sanitiseString(search.trim()), 'i');
+            const roleRegex = roleFilter ? new RegExp(sanitiseString(roleFilter.trim()), 'i') : null;
+            const emailRegex = new RegExp(sanitiseString(search as string), 'i')
             // Base filter (name, userName, etc.)
             const baseFilter: any = {
                 isDeleted: false,
                 $or: [
                     { firstName: nameRegex },
                     { lastName: nameRegex },
+                    { email: emailRegex },
                     {
                         $expr: {
                             $regexMatch: {
@@ -343,6 +345,22 @@ export class userManagementService {
                 ]
             };
 
+
+            for (const [key, value] of Object.entries(filters)) {
+                if (
+                    !["page", "limit", "search", "role", "sortBy", "sortOrder"].includes(key) &&
+                    typeof value === 'string'
+                ) {
+                    const val = sanitiseString(value);
+                    if (val.trim()) {
+                        baseFilter[key] = new RegExp(val, 'i');
+                    }
+                }
+            }
+
+            if (currentRole.name === "Project Manager") {
+                baseFilter.createdBy = currentUser._id;
+            }
             // if (currentRole.name === "Project Manager") {
             //     const projectsManaged = await Project.find({ assignedProjectManager: currentUser._id })
             //         .select("assignedTeamMembers")
@@ -391,7 +409,7 @@ export class userManagementService {
                     $sort: {
                         ...(sortBy === "roleName"
                             ? { roleName: sortOrder === "desc" ? -1 : 1, firstName: 1 }
-                            : { firstName: sortOrder === "desc" ? -1 : 1 })
+                            : { [sortBy]: sortOrder === "desc" ? -1 : 1 })
                     }
                 },
                 { $skip: skip },

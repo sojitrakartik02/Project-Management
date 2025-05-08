@@ -51,7 +51,7 @@ export class App {
         });
         this.app.use(morgan(LOG_FORMAT, { stream }));
         this.app.use(envCheckMiddleware)
-        this.app.use(cors({ origin: ["http://localhost:5173"], credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE'] }))
+        this.app.use(cors({ origin: ["*", "http://localhost:5173", "https://enables-ratios-likewise-identifies.trycloudflare.com"],  methods: ['GET', 'POST', 'PUT', 'DELETE'] }))
         this.app.use(compression())
         this.app.use(cookieParser())
         this.app.use(express.json());

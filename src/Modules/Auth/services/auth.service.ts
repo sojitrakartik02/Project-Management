@@ -132,7 +132,7 @@ export class AuthService {
                 refreshToken,
             };
         } catch (error) {
-            console.log(error)
+
             if (error instanceof HttpException) throw error;
             throw new HttpException(status.InternalServerError, messages[language].General.error);
         }
@@ -522,7 +522,7 @@ export class AuthService {
 
             return { accessToken, refreshToken: newRefreshToken };
         } catch (error) {
-            console.log(error)
+            
             if (error instanceof HttpException) throw error;
             throw new HttpException(status.Unauthorized, messages[language].General.invalid.replace("##", messages[language].User.refreshToken));
         }

@@ -41,7 +41,7 @@ export class userManagementController {
         try {
             const language = req.userLanguage ?? 'en'
             const createdBy = req.user._id
-            console.log("createdBy", createdBy)
+
             const { roleId } = req.body
 
             if (!roleId.length) {
@@ -58,7 +58,7 @@ export class userManagementController {
             });
 
         } catch (error) {
-            console.log(error)
+
             next(error)
         }
     }
@@ -99,6 +99,7 @@ export class userManagementController {
                 role = "",
                 sortBy = "firstName",
                 sortOrder = "asc",
+                ...filters
             } = req.query;
 
             const result = await this.userMService.getAllUsers(
@@ -109,6 +110,7 @@ export class userManagementController {
                 role as string,
                 sortBy as string,
                 sortOrder as string,
+                filters,
                 language
             );
 

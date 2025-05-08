@@ -9,7 +9,7 @@ export const ErrorMiddleware = (error: HttpException, req: Request, res: Respons
             message: message
         })
     } catch (err) {
-        console.error(error);
+
         next(err)
     }
 }

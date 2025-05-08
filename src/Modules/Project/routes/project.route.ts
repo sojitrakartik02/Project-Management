@@ -15,5 +15,6 @@ export class ProjectRoutes implements Routes {
     }
     private initializeRoutes() {
         this.router.post(`${this.path}`, isAdminorPM, validationMiddleware(CreateProjectDto), this.projectController.createProject)
+        this.router.get(`${this.path}`, isAdminorPM, this.projectController.getAllProjects)
     }
 }
