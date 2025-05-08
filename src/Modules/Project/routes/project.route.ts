@@ -1,5 +1,5 @@
 import { Routes } from "@interface/routes.interface";
-import { isAdmin, isAdminorPM, isuserCreatePermission } from "@middlewares/authMiddleware";
+import { authMiddleware, isAdmin, isAdminorPM, isuserCreatePermission } from "@middlewares/authMiddleware";
 import { validationMiddleware } from "@middlewares/validation.middleware";
 import { ProjectController } from "@Project/controllers/project.controller";
 import { CreateProjectDto } from "@Project/dtos/project.dto";
@@ -16,5 +16,6 @@ export class ProjectRoutes implements Routes {
     private initializeRoutes() {
         this.router.post(`${this.path}`, isAdminorPM, validationMiddleware(CreateProjectDto), this.projectController.createProject)
         this.router.get(`${this.path}`, isAdminorPM, this.projectController.getAllProjects)
+        this.router.get(`${this.path}/:id`,isAdminorPM, this.projectController.getById)
     }
 }

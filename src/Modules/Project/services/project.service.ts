@@ -143,4 +143,20 @@ export class ProjectService {
     }
 
 
+    public async getById(id: string, createdBy: string, roleId: string, language: string) {
+        try {
+            const role = await Role.findById(roleId)
+
+            const project = await Project.findById(id).populate('assignedProjectManager', ' firstName lastName ')
+                .populate('assignedTeamMembers', ' firstName lastName ')
+                .select('name description status startDate endDate clients.name assignedProjectManager assignedTeamMembers createdBy createdAt updatedAt')
+                .lean()
+            return project
+        } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(status.InternalServerError, messages[language].General.errorFetching.invalid("##", messages[language].Project.project))
+        }
+    }
+
+
 }

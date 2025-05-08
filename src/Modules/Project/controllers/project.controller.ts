@@ -79,6 +79,24 @@ export class ProjectController {
     }
 
 
+    public getById = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params
+            const createdBy = req.user._id
+            const roleId = req.user.roleId.toString()
+            const language = req.userLanguage ?? 'en'
+            const result = await this.projectService.getById(id, createdBy,roleId, language)
+            return res.status(status.OK).json({
+                jsonStatus: jsonStatus.OK,
+                message: messages[language].General.get_success.replace("##", messages[language].Project.project),
+                result
+            })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+
 
 
 
