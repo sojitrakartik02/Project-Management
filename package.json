@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "npm run build && node dist/server.js",
+    "build": "swc src -d dist --source-maps --copy-files && tsc-alias",
     "dev": "nodemon src/server.ts",
-    "build": "tsc && tsc-alias",
+    "build:test": "tsc && tsc-alias",
     "deploy:prod": "pm2 start ecosystem.config.js",
     "test:createRole": "cross-env NODE_ENV=development jest src/tests/createRole.test.ts --detectOpenHandles --runInBand --verbose",
     "test:createAdmin": "cross-env NODE_ENV=development jest src/tests/createAdmin.test.ts -detectOpenHandles"
